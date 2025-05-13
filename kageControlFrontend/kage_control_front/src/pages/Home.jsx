@@ -2,7 +2,7 @@
 import React from "react";
 import Sidebar from "../components/Sidebar";
 import { Outlet } from "react-router-dom";
-import { useRole } from "../hooks/useAuth";
+import { useAuth, useRole, useUser } from "../hooks/useAuth";
 
 export default function Home() {
   const role = useRole();

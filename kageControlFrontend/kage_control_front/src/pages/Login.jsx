@@ -2,6 +2,10 @@
 import React, { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+// Importa todo lo que exporte butterup y calculamos un toast seguro
+import * as butterUp from "butterup";
+
+const toast = butterUp.toast ?? butterUp;  // si toast no existe, butterUp itself podría ser la función
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -10,14 +14,35 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const safeSuccess = (msg) => {
+    if (typeof toast.success === "function") toast.success(msg);
+  };
+  const safeError = (msg) => {
+    if (typeof toast.error === "function") toast.error(msg);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
       await login({ username, password });
+      safeSuccess("Inicio de sesión exitoso 👌");
       navigate("/");
     } catch (err) {
-      setError(err.message);
+      console.error("Login error full:", err);
+      const detail = err.response?.data?.detail;
+      console.log("Detail from backend:", detail);
+
+      let message = "Error desconocido al iniciar sesión";
+
+      if (Array.isArray(detail)) {
+        message = detail.map((d) => d.msg).join("; ");
+      } else if (typeof detail === "string") {
+        message = detail;
+      }
+
+      setError(message);
+      safeError(message);
     }
   };
 
@@ -32,7 +57,9 @@ export default function Login() {
         </h1>
 
         {error && (
-          <p className="text-red-500 mb-4 text-center">{error}</p>
+          <p className="text-red-500 mb-4 text-center whitespace-pre-wrap">
+            {error}
+          </p>
         )}
 
         <div className="mb-4">

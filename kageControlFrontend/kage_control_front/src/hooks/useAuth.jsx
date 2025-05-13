@@ -1,36 +1,32 @@
-// src/hooks/useAuth.js
+// src/hooks/useAuth.jsx
 import { useState, useContext, createContext } from "react";
+import axiosClient from "../api/axiosClient";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  // simulamos login: en prod reemplaza con llamada a tu API
   const login = async ({ username, password }) => {
-    // aquí podrías fetch("/api/login", { username, password })
-    // y obtener { username, role, token… }
-    // por ahora, simulamos:
-    let role = null;
-    switch (password) {
-      case "meseropass":
-        role = "mesero";
-        break;
-      case "adminpass":
-        role = "admin";
-        break;
-      case "cocinapass":
-        role = "cocina";
-        break;
-      default:
-        throw new Error("Credenciales inválidas");
-    }
+    const form = new URLSearchParams();
+    form.append("username", username);
+    form.append("password", password);
 
-    setUser({ username, role });
+    const res = await axiosClient.post("/auth/login", form, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+
+    const token = res.data.access_token;
+    localStorage.setItem("token", token);
+
+    // Decodifica el JWT manualmente
+    const payload = parseJwt(token);
+    setUser({ username: payload.sub, role: payload.role });
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("token");
   };
 
   return (
@@ -44,10 +40,25 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// **YA EXPORTAMOS** useRole y useUser
 export function useRole() {
-  return useAuth().user?.role;
+  const { user } = useAuth();
+  return user?.role;
 }
 
 export function useUser() {
-  return useAuth().user;
+  const { user } = useAuth();
+  return user;
+}
+
+// Función para parsear JWT sin librerías
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
 }

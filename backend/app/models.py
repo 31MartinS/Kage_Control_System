@@ -47,8 +47,8 @@ class Order(Base):
 
 
 class UserRole(str, enum.Enum):
-    waiter = "waiter"
-    cook = "cook"
+    mesero = "mesero"
+    cocina = "cocina"
     admin = "admin"
 
 class User(Base):

@@ -2,12 +2,19 @@ from fastapi import FastAPI, WebSocket
 from .database import Base, engine
 from .routers import tables, arrivals, orders, kitchen, reports, auth
 from .websocket import manager
+from fastapi.middleware.cors import CORSMiddleware
 
 # Crear las tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="KageControl API")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # o ["*"] para todos (no recomendado en producción)
+    allow_credentials=True,
+    allow_methods=["*"],  # o especificar ["GET", "POST"]
+    allow_headers=["*"],
+)
 # Rutas REST
 app.include_router(tables.router)
 app.include_router(arrivals.router)
