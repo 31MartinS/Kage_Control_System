@@ -1,19 +1,20 @@
 // src/pages/roles/Mesero/RegistrarLlegada.jsx
 import { useState } from "react";
 import axiosClient from "../../../api/axiosClient";
-import { toast } from "butterup";
+import butterup from "butteruptoasts";
+import "../../../styles/butterup-2.0.0/butterup-2.0.0/butterup.css";
 
 export default function RegistrarLlegada() {
-  // Obtenemos mesas disponibles; idealmente habría un GET /tables
   const availableTables = Array.from({ length: 12 }, (_, i) => i + 1);
 
   const [form, setForm] = useState({
     nombre: "",
     comensales: 1,
-    table_id: "",    // Ahora se llama table_id
+    table_id: "",
     contacto: "",
     ubicacion: "",
   });
+
   const [successMsg, setSuccessMsg] = useState("");
 
   const handleChange = (e) => {
@@ -21,12 +22,22 @@ export default function RegistrarLlegada() {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
+  const showToast = (type, title, message) => {
+    butterup.toast({
+      title,
+      message,
+      location: "top-right",
+      icon: false,
+      dismissable: true,
+      type,
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMsg("");
 
     try {
-      // Preparamos el payload con la clave exacta table_id
       const payload = {
         customer_name: form.nombre,
         party_size: +form.comensales,
@@ -42,8 +53,9 @@ export default function RegistrarLlegada() {
       const msg = `Mesa ${mesaId} asignada a ${form.comensales} comensal(es). Llegada registrada a las ${at}.`;
 
       setSuccessMsg(msg);
-      toast.success(msg);
+      showToast("success", "Llegada registrada", msg);
 
+      // Reset de formulario después del envío exitoso
       setForm({
         nombre: "",
         comensales: 1,
@@ -53,11 +65,11 @@ export default function RegistrarLlegada() {
       });
     } catch (err) {
       const detail = err.response?.data?.detail;
-      const text =
-        Array.isArray(detail)
-          ? detail.map((d) => d.msg).join("; ")
-          : detail || "Error al registrar llegada";
-      toast.error(text);
+      const text = Array.isArray(detail)
+    ? detail.map((d) => d.msg).join("; ")
+    : detail || "Error al registrar llegada";
+  showToast("error", "Error al registrar llegada", text);
+
     }
   };
 
@@ -69,7 +81,6 @@ export default function RegistrarLlegada() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Nombre */}
           <div>
             <label className="block text-[#1F2937] mb-1">Nombre cliente</label>
             <input
@@ -82,7 +93,6 @@ export default function RegistrarLlegada() {
             />
           </div>
 
-          {/* Nº Comensales */}
           <div>
             <label className="block text-[#1F2937] mb-1">
               # de comensales
@@ -97,7 +107,6 @@ export default function RegistrarLlegada() {
             />
           </div>
 
-          {/* Selección de mesa */}
           <div>
             <label className="block text-[#1F2937] mb-1">Mesa (opcional)</label>
             <select
@@ -115,7 +124,6 @@ export default function RegistrarLlegada() {
             </select>
           </div>
 
-          {/* Contacto */}
           <div className="md:col-span-2">
             <label className="block text-[#1F2937] mb-1">
               Contacto (opcional)
@@ -129,7 +137,6 @@ export default function RegistrarLlegada() {
             />
           </div>
 
-          {/* Ubicación */}
           <div className="md:col-span-2">
             <label className="block text-[#1F2937] mb-1">
               Preferencia ubicación (opcional)
@@ -144,7 +151,6 @@ export default function RegistrarLlegada() {
           </div>
         </div>
 
-        {/* Botón */}
         <button
           type="submit"
           className="w-full py-3 bg-[#3BAEA0] hover:bg-[#32A291] text-white rounded-lg font-semibold transition"
@@ -152,7 +158,6 @@ export default function RegistrarLlegada() {
           Asignar mesa
         </button>
 
-        {/* Mensaje de éxito */}
         {successMsg && (
           <p className="mt-4 text-center text-[#184B6B] font-medium whitespace-pre-wrap">
             {successMsg}

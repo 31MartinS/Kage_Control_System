@@ -2,10 +2,8 @@
 import React, { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-// Importa todo lo que exporte butterup y calculamos un toast seguro
-import * as butterUp from "butterup";
-
-const toast = butterUp.toast ?? butterUp;  // si toast no existe, butterUp itself podría ser la función
+import butterup from "butteruptoasts";
+import "../styles/butterup-2.0.0/butterup-2.0.0/butterup.css";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -14,24 +12,34 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const safeSuccess = (msg) => {
-    if (typeof toast.success === "function") toast.success(msg);
-  };
-  const safeError = (msg) => {
-    if (typeof toast.error === "function") toast.error(msg);
+  const showToast = (type, title, message) => {
+    butterup.toast({
+      title,
+      message,
+      location: "top-right",
+      icon: false,
+      dismissable: true,
+      type,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
-      await login({ username, password });
-      safeSuccess("Inicio de sesión exitoso 👌");
+      const data = await login({ username, password });
+
+      showToast(
+        "success",
+        `¡Hola, ${data?.nombreUsuario || username}!`,
+        "Bienvenido al panel de administración."
+      );
+
       navigate("/");
     } catch (err) {
       console.error("Login error full:", err);
       const detail = err.response?.data?.detail;
-      console.log("Detail from backend:", detail);
 
       let message = "Error desconocido al iniciar sesión";
 
@@ -42,7 +50,7 @@ export default function Login() {
       }
 
       setError(message);
-      safeError(message);
+      showToast("error", "Error al iniciar sesión", message);
     }
   };
 

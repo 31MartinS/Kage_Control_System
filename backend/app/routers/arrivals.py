@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .. import crud, schemas, database
 from ..websocket import manager
@@ -15,4 +15,9 @@ async def add_arrival(data: schemas.ArrivalCreate, db: Session = Depends(databas
             "tables": [t.__dict__ for t in tables]
         })
         return arrival
-    return {"error": "No hay mesas disponibles"}
+
+    # ⚠️ Lanzar error si no hay mesas
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="No hay mesas disponibles o la mesa está ocupada"
+    )

@@ -39,9 +39,11 @@ def update_order_status(db: Session, order_id: int, status: models.OrderStatus):
     order.status = status
     db.commit(); db.refresh(order)
     return order
+def get_all_orders(db: Session):
+    return db.query(models.Order).all()
 
 
-
+#Uusarios
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 

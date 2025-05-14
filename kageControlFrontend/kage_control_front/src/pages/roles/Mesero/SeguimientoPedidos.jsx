@@ -1,5 +1,6 @@
 // src/pages/roles/Mesero/SeguimientoPedidos.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 const STATUS_OPTIONS = [
   { label: "Pendiente", color: "bg-yellow-200 text-yellow-800" },
@@ -8,51 +9,50 @@ const STATUS_OPTIONS = [
   { label: "Servido", color: "bg-gray-200 text-gray-700" },
 ];
 
-const INITIAL_ORDERS = [
-  {
-    id: 1,
-    table: 5,
-    items: ["Ensalada César", "Sopa del día"],
-    status: 0,
-    time: "12:05",
-  },
-  {
-    id: 2,
-    table: 3,
-    items: ["Filete a la plancha", "Postre del chef"],
-    status: 1,
-    time: "12:12",
-  },
-  {
-    id: 3,
-    table: 8,
-    items: ["Sopa del día"],
-    status: 2,
-    time: "12:20",
-  },
-];
-
 export default function SeguimientoPedidos() {
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
 
-  const handleStatusChange = (id, newStatus) => {
-    setOrders((o) =>
-      o.map((ord) =>
-        ord.id === id ? { ...ord, status: Number(newStatus) } : ord
-      )
-    );
+  // Cargar pedidos desde el backend
+  useEffect(() => {
+    axios
+      .get("http://localhost:8000/orders/tracking")
+      .then((res) => setOrders(res.data))
+      .catch((err) => console.error("Error al cargar pedidos:", err));
+  }, []);
+
+  // Actualizar estado de un pedido
+  const handleStatusChange = async (id, newStatus) => {
+    const statusStr = STATUS_OPTIONS[newStatus].label
+      .toLowerCase()
+      .replace(/ /g, "_");
+
+    try {
+      await axios.patch(
+        `http://localhost:8000/orders/${id}/status?status=${statusStr}`
+      );
+      setOrders((orders) =>
+        orders.map((ord) =>
+          ord.id === id ? { ...ord, status: Number(newStatus) } : ord
+        )
+      );
+    } catch (err) {
+      console.error("Error al actualizar estado:", err);
+    }
   };
 
+  // Filtrar según estado seleccionado
   const filtered = orders.filter(
     (o) => filter === "all" || o.status === Number(filter)
   );
 
   return (
     <div className="bg-[#FAFAFA] p-6 rounded-lg shadow space-y-6">
-      <h1 className="text-3xl font-bold text-[#184B6B]">Seguimiento de Pedidos</h1>
+      <h1 className="text-3xl font-bold text-[#184B6B]">
+        Seguimiento de Pedidos
+      </h1>
 
-      {/* Filtros */}
+      {/* Filtro por estado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
         <div>
           <label className="block text-[#1F2937] mb-1">Filtrar por estado</label>
@@ -85,7 +85,7 @@ export default function SeguimientoPedidos() {
             {/* Info del pedido */}
             <div className="space-y-1">
               <p className="text-[#1F2937] font-semibold">
-                Mesa {ord.table} — {ord.time}
+                Mesa {ord.table || "?"} — {ord.time}
               </p>
               <p className="text-[#6B7280] text-sm">
                 {ord.items.join(", ")}
