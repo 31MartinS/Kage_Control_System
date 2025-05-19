@@ -16,6 +16,7 @@ export default function RegistrarLlegada() {
   });
 
   const [successMsg, setSuccessMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,14 +36,43 @@ export default function RegistrarLlegada() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setSuccessMsg("");
 
+    // Validaciones
+    if (!form.nombre.trim() || form.nombre.trim().length < 3) {
+      showToast("error", "Nombre inválido", "El nombre debe tener al menos 3 caracteres.");
+      return;
+    }
+
+    const numComensales = parseInt(form.comensales);
+    if (isNaN(numComensales) || numComensales < 1 || numComensales > 20) {
+      showToast("error", "Número inválido", "Ingrese entre 1 y 20 comensales.");
+      return;
+    }
+
+    if (form.table_id && !availableTables.includes(Number(form.table_id))) {
+      showToast("error", "Mesa inválida", "Seleccione una mesa válida.");
+      return;
+    }
+
+    if (
+      form.contacto &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contacto) &&
+      !/^\+?[0-9\s\-]{7,15}$/.test(form.contacto)
+    ) {
+      showToast("error", "Contacto inválido", "Ingrese un email o número de teléfono válido.");
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
+
       const payload = {
-        customer_name: form.nombre,
-        party_size: +form.comensales,
-        contact: form.contacto || undefined,
-        preferences: form.ubicacion || undefined,
+        customer_name: form.nombre.trim(),
+        party_size: numComensales,
+        contact: form.contacto.trim() || undefined,
+        preferences: form.ubicacion.trim() || undefined,
         ...(form.table_id && { table_id: +form.table_id }),
       };
 
@@ -50,12 +80,11 @@ export default function RegistrarLlegada() {
 
       const mesaId = res.data.table_id;
       const at = new Date(res.data.assigned_at).toLocaleTimeString();
-      const msg = `Mesa ${mesaId} asignada a ${form.comensales} comensal(es). Llegada registrada a las ${at}.`;
+      const msg = `Mesa ${mesaId} asignada a ${numComensales} comensal(es). Llegada registrada a las ${at}.`;
 
       setSuccessMsg(msg);
       showToast("success", "Llegada registrada", msg);
 
-      // Reset de formulario después del envío exitoso
       setForm({
         nombre: "",
         comensales: 1,
@@ -66,10 +95,12 @@ export default function RegistrarLlegada() {
     } catch (err) {
       const detail = err.response?.data?.detail;
       const text = Array.isArray(detail)
-    ? detail.map((d) => d.msg).join("; ")
-    : detail || "Error al registrar llegada";
-  showToast("error", "Error al registrar llegada", text);
+        ? detail.map((d) => d.msg).join("; ")
+        : detail || "Error al registrar llegada";
 
+      showToast("error", "Error al registrar llegada", text);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -101,6 +132,7 @@ export default function RegistrarLlegada() {
               name="comensales"
               type="number"
               min="1"
+              max="20"
               value={form.comensales}
               onChange={handleChange}
               className="w-full p-2 border rounded bg-white focus:outline-none"
@@ -153,9 +185,10 @@ export default function RegistrarLlegada() {
 
         <button
           type="submit"
-          className="w-full py-3 bg-[#3BAEA0] hover:bg-[#32A291] text-white rounded-lg font-semibold transition"
+          disabled={isSubmitting}
+          className="w-full py-3 bg-[#3BAEA0] hover:bg-[#32A291] text-white rounded-lg font-semibold transition disabled:opacity-50"
         >
-          Asignar mesa
+          {isSubmitting ? "Registrando..." : "Asignar mesa"}
         </button>
 
         {successMsg && (

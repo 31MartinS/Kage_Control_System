@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 const MENU = [
-  { id: 1, nombre: "Ensalada César", precio: 8.5, station: "cocina" },
-  { id: 2, nombre: "Sopa del día", precio: 5.0, station: "cocina" },
-  { id: 3, nombre: "Filete a la plancha", precio: 12.0, station: "cocina" },
-  { id: 4, nombre: "Postre del chef", precio: 6.0, station: "barra" },
+  { id: 1, nombre: "Sushi", precio: 8.5, station: "cocina" },
+  { id: 2, nombre: "Ramen", precio: 5.0, station: "cocina" },
+  { id: 3, nombre: "Tempura", precio: 12.0, station: "cocina" },
+  { id: 4, nombre: "Yakitori", precio: 6.0, station: "barra" },
 ];
 
 const arrivalId = 1; // Ajusta esto según el arrival activo
