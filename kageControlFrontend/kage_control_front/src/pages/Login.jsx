@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -55,13 +54,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-200">
+    <div className="min-h-screen flex items-center justify-center bg-[#FFF8F0]">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md"
+        className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-[#EADBC8]"
       >
-        <h1 className="text-2xl font-semibold text-blue-900 mb-6 text-center">
-          Iniciar sesión
+        <h1 className="text-3xl font-serif font-semibold text-[#8D2E38] mb-6 text-center">
+          Bienvenido a La Llama Gourmet
         </h1>
 
         {error && (
@@ -70,33 +69,33 @@ export default function Login() {
           </p>
         )}
 
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-1">Usuario</label>
+        <div className="mb-5">
+          <label className="block text-[#4D4D4D] mb-1 font-medium">Usuario</label>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
             placeholder="Tu usuario"
-            className="w-full px-4 py-2 border rounded-full focus:outline-none"
+            className="w-full px-4 py-3 border border-[#E6D5C3] rounded-full focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
           />
         </div>
 
         <div className="mb-6">
-          <label className="block text-gray-700 mb-1">Contraseña</label>
+          <label className="block text-[#4D4D4D] mb-1 font-medium">Contraseña</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="••••••••"
-            className="w-full px-4 py-2 border rounded-full focus:outline-none"
+            className="w-full px-4 py-3 border border-[#E6D5C3] rounded-full focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-full transition"
+          className="w-full py-3 bg-[#E76F51] hover:bg-[#D45B3C] text-white rounded-full font-semibold tracking-wide transition"
         >
           Ingresar
         </button>

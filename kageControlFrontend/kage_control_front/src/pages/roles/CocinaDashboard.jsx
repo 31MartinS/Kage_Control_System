@@ -1,22 +1,27 @@
 import React from 'react';
+import { BellRing, Clock, ClipboardList } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const options = [
-  { icon: '🔔', label: 'Ver pedidos por estación',   path: '/cocina/pedidos' },
-  { icon: '🕒', label: 'Actualizar estado de platillos', path: '/cocina/estado' },
-  { icon: '📋', label: 'Consultar notas dietéticas', path: '/cocina/notas' },
+  { icon: <BellRing className="w-5 h-5 mr-3" />, label: 'Ver pedidos por estación', path: '/cocina/pedidos' },
+  { icon: <Clock className="w-5 h-5 mr-3" />, label: 'Actualizar estado de platillos', path: '/cocina/estado' },
+  { icon: <ClipboardList className="w-5 h-5 mr-3" />, label: 'Consultar notas dietéticas', path: '/cocina/notas' },
 ];
 
 export default function CocinaDashboard() {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-bold text-blue-900">Cocina</h1>
+      <h1 className="text-4xl font-serif font-bold text-[#8D2E38]">Panel de Cocina</h1>
       <div className="space-y-3">
-        {options.map(({ icon, label }) => (
+        {options.map(({ icon, label, path }) => (
           <button
             key={label}
-            className="w-full flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition"
+            onClick={() => navigate(path)}
+            className="w-full flex items-center px-5 py-3 rounded-full bg-[#264653] hover:bg-[#1b3540] text-white shadow-sm transition font-medium tracking-wide"
           >
-            <span className="mr-2 text-xl">{icon}</span>
+            {icon}
             {label}
           </button>
         ))}

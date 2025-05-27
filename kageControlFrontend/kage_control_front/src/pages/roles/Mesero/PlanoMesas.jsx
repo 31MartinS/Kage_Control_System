@@ -22,12 +22,11 @@ const TABLES_POSITIONS = {
   ],
 };
 
-// Map de estado → clase de color Tailwind
 const STATUS_COLOR = {
-  libre: "bg-green-400",
-  reservada: "bg-yellow-400",
-  ocupado: "bg-red-400",
-  limpieza: "bg-blue-400",
+  libre: "bg-[#3BAEA0]",
+  reservada: "bg-[#F4A261]",
+  ocupado: "bg-[#E76F51]",
+  limpieza: "bg-[#264653]",
   desconocido: "bg-purple-400",
 };
 
@@ -40,9 +39,8 @@ const STATUS_MAP = {
 
 export default function PlanoMesas() {
   const [piso, setPiso] = useState(1);
-  const tables = useTablesSocket(); // Array de mesas en tiempo real
+  const tables = useTablesSocket();
 
-  // Construimos un mapa { id: estadoLocal }
   const mesasEstado = useMemo(() => {
     const map = {};
     tables.forEach((t) => {
@@ -55,20 +53,20 @@ export default function PlanoMesas() {
   const posiciones = TABLES_POSITIONS[piso];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-blue-900">
+    <div className="space-y-6">
+      <h1 className="text-3xl font-serif font-bold text-[#8D2E38]">
         Plano de Mesas — Piso {piso}
       </h1>
 
-      <div className="flex space-x-2">
+      <div className="flex space-x-4">
         {[1, 2].map((n) => (
           <button
             key={n}
             onClick={() => setPiso(n)}
-            className={`px-4 py-2 rounded ${
+            className={`px-6 py-2 rounded-full border font-medium transition shadow-sm ${
               piso === n
-                ? "bg-teal-500 text-white"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-[#264653] text-white border-transparent"
+                : "bg-white text-[#264653] border-[#264653] hover:bg-[#f1f1f1]"
             }`}
           >
             Piso {n}
@@ -77,7 +75,7 @@ export default function PlanoMesas() {
       </div>
 
       <div
-        className="relative h-[700px] bg-cover bg-center rounded-lg shadow-lg overflow-hidden"
+        className="relative h-[700px] bg-cover bg-center rounded-2xl shadow-lg border border-[#EADBC8] overflow-hidden"
         style={{ backgroundImage: "url(/plano-restaurante.png)" }}
       >
         {posiciones.map(({ id, top, left }) => {
@@ -88,12 +86,10 @@ export default function PlanoMesas() {
             <motion.div
               key={id}
               whileHover={{ scale: 1.1 }}
-              className={`absolute h-14 w-14 flex items-center justify-center rounded-full cursor-default ${colorClass}`}
+              className={`absolute h-14 w-14 flex items-center justify-center rounded-full cursor-default text-sm font-semibold text-white shadow-md ${colorClass}`}
               style={{ top, left, translate: "-50% -50%" }}
             >
-              <span className="text-gray-800 font-semibold">
-                M{id} ({estado})
-              </span>
+              M{id}
             </motion.div>
           );
         })}

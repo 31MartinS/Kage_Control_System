@@ -14,6 +14,7 @@ import Reportes from "./pages/roles/Admin/Reportes";
 import Usuarios from "./pages/roles/Admin/Usuarios";
 import Inventario from "./pages/roles/Admin/Inventario";
 import Informes from "./pages/roles/Admin/Informes";
+import EditorMesas from "./pages/roles/Admin/EditorMesas";
 
 // Cocina
 import Pedidos from "./pages/roles/Cocina/Pedidos";
@@ -62,6 +63,7 @@ export default function AppRoutes() {
           <Route path="usuarios" element={<Usuarios />} />
           <Route path="inventario" element={<Inventario />} />
           <Route path="informes" element={<Informes />} />
+          <Route path="mesas" element={<EditorMesas />} />
         </Route>
 
         {/* Cocina */}

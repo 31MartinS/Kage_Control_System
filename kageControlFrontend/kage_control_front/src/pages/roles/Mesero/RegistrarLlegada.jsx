@@ -1,4 +1,4 @@
-// src/pages/roles/Mesero/RegistrarLlegada.jsx
+// 🎨 REGISTRAR LLEGADA - Estilo Gourmet Aplicado (intermedio: simple pero con más carácter visual)
 import { useState } from "react";
 import axiosClient from "../../../api/axiosClient";
 import butterup from "butteruptoasts";
@@ -16,63 +16,37 @@ export default function RegistrarLlegada() {
   });
 
   const [successMsg, setSuccessMsg] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    const { name, value, type } = e.target;
+    setForm((f) => ({
+      ...f,
+      [name]: type === "number" ? +value : value,
+    }));
   };
 
   const showToast = (type, title, message) => {
-    butterup.toast({
-      title,
-      message,
-      location: "top-right",
-      icon: false,
-      dismissable: true,
-      type,
-    });
+    butterup.toast({ title, message, location: "top-right", icon: false, dismissable: true, type });
+  };
+
+  const parseError = (err) => {
+    const detail = err.response?.data?.detail;
+    if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
+    return detail || "Error al registrar llegada";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
     setSuccessMsg("");
-
-    // Validaciones
-    if (!form.nombre.trim() || form.nombre.trim().length < 3) {
-      showToast("error", "Nombre inválido", "El nombre debe tener al menos 3 caracteres.");
-      return;
-    }
-
-    const numComensales = parseInt(form.comensales);
-    if (isNaN(numComensales) || numComensales < 1 || numComensales > 20) {
-      showToast("error", "Número inválido", "Ingrese entre 1 y 20 comensales.");
-      return;
-    }
-
-    if (form.table_id && !availableTables.includes(Number(form.table_id))) {
-      showToast("error", "Mesa inválida", "Seleccione una mesa válida.");
-      return;
-    }
-
-    if (
-      form.contacto &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contacto) &&
-      !/^\+?[0-9\s\-]{7,15}$/.test(form.contacto)
-    ) {
-      showToast("error", "Contacto inválido", "Ingrese un email o número de teléfono válido.");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setIsSubmitting(true);
-
       const payload = {
-        customer_name: form.nombre.trim(),
-        party_size: numComensales,
-        contact: form.contacto.trim() || undefined,
-        preferences: form.ubicacion.trim() || undefined,
+        customer_name: form.nombre,
+        party_size: form.comensales,
+        contact: form.contacto || undefined,
+        preferences: form.ubicacion || undefined,
         ...(form.table_id && { table_id: +form.table_id }),
       };
 
@@ -80,122 +54,95 @@ export default function RegistrarLlegada() {
 
       const mesaId = res.data.table_id;
       const at = new Date(res.data.assigned_at).toLocaleTimeString();
-      const msg = `Mesa ${mesaId} asignada a ${numComensales} comensal(es). Llegada registrada a las ${at}.`;
+      const msg = `Mesa ${mesaId} asignada a ${form.comensales} comensal(es). Llegada registrada a las ${at}.`;
 
       setSuccessMsg(msg);
       showToast("success", "Llegada registrada", msg);
 
-      setForm({
-        nombre: "",
-        comensales: 1,
-        table_id: "",
-        contacto: "",
-        ubicacion: "",
-      });
+      setForm({ nombre: "", comensales: 1, table_id: "", contacto: "", ubicacion: "" });
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      const text = Array.isArray(detail)
-        ? detail.map((d) => d.msg).join("; ")
-        : detail || "Error al registrar llegada";
-
-      showToast("error", "Error al registrar llegada", text);
+      showToast("error", "Error al registrar llegada", parseError(err));
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-[#F3F4F6] p-6 rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold text-[#184B6B] mb-6">
+    <div className="bg-[#FFF8F0] p-10 rounded-3xl shadow-xl border border-[#EADBC8] max-w-3xl mx-auto">
+      <h1 className="text-3xl font-serif font-bold text-[#8D2E38] mb-8 text-center">
         Registrar llegada de comensales
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[#1F2937] mb-1">Nombre cliente</label>
-            <input
-              name="nombre"
-              value={form.nombre}
-              onChange={handleChange}
-              required
-              placeholder="Ej. Juan Pérez"
-              className="w-full p-2 border rounded bg-white focus:outline-none"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4 md:col-span-1">
+          <label className="block text-[#4D4D4D] font-medium">Nombre del cliente</label>
+          <input
+            name="nombre"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-[#EADBC8] rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+          />
 
-          <div>
-            <label className="block text-[#1F2937] mb-1">
-              # de comensales
-            </label>
-            <input
-              name="comensales"
-              type="number"
-              min="1"
-              max="20"
-              value={form.comensales}
-              onChange={handleChange}
-              className="w-full p-2 border rounded bg-white focus:outline-none"
-            />
-          </div>
+          <label className="block text-[#4D4D4D] font-medium">Número de comensales</label>
+          <input
+            name="comensales"
+            type="number"
+            min="1"
+            max="20"
+            value={form.comensales}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-[#EADBC8] rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+          />
 
-          <div>
-            <label className="block text-[#1F2937] mb-1">Mesa (opcional)</label>
-            <select
-              name="table_id"
-              value={form.table_id}
-              onChange={handleChange}
-              className="w-full p-2 border rounded bg-white focus:outline-none"
-            >
-              <option value="">-- Dejar asignación automática --</option>
-              {availableTables.map((n) => (
-                <option key={n} value={n}>
-                  Mesa {n}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-[#1F2937] mb-1">
-              Contacto (opcional)
-            </label>
-            <input
-              name="contacto"
-              value={form.contacto}
-              onChange={handleChange}
-              placeholder="Teléfono o email"
-              className="w-full p-2 border rounded bg-white focus:outline-none"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-[#1F2937] mb-1">
-              Preferencia ubicación (opcional)
-            </label>
-            <input
-              name="ubicacion"
-              value={form.ubicacion}
-              onChange={handleChange}
-              placeholder="Ventana, interior, cerca de cocina..."
-              className="w-full p-2 border rounded bg-white focus:outline-none"
-            />
-          </div>
+          <label className="block text-[#4D4D4D] font-medium">Mesa (opcional)</label>
+          <select
+            name="table_id"
+            value={form.table_id}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-[#EADBC8] rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+          >
+            <option value="">-- Mesa automática --</option>
+            {availableTables.map((n) => (
+              <option key={n} value={n}>Mesa {n}</option>
+            ))}
+          </select>
         </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full py-3 bg-[#3BAEA0] hover:bg-[#32A291] text-white rounded-lg font-semibold transition disabled:opacity-50"
-        >
-          {isSubmitting ? "Registrando..." : "Asignar mesa"}
-        </button>
+        <div className="space-y-4 md:col-span-1">
+          <label className="block text-[#4D4D4D] font-medium">Contacto (opcional)</label>
+          <input
+            name="contacto"
+            value={form.contacto}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-[#EADBC8] rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+          />
 
-        {successMsg && (
-          <p className="mt-4 text-center text-[#184B6B] font-medium whitespace-pre-wrap">
-            {successMsg}
-          </p>
-        )}
+          <label className="block text-[#4D4D4D] font-medium">Preferencia de ubicación (opcional)</label>
+          <input
+            name="ubicacion"
+            value={form.ubicacion}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-[#EADBC8] rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 mt-1 rounded-full font-semibold text-white transition ${
+              loading ? "bg-gray-400" : "bg-[#264653] hover:bg-[#1b3540]"
+            }`}
+          >
+            {loading ? "Registrando..." : "Asignar mesa"}
+          </button>
+
+          {successMsg && (
+            <p className="mt-4 text-center text-[#3BAEA0] font-medium whitespace-pre-wrap">
+              {successMsg}
+            </p>
+          )}
+        </div>
       </form>
     </div>
   );
