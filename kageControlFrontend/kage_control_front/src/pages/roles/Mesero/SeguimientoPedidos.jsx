@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 const STATUS_OPTIONS = [
-  { label: "Pendiente", color: "bg-yellow-100 text-yellow-800" },
-  { label: "En preparación", color: "bg-[#3BBAC9] text-white" },
-  { label: "Listo para servir", color: "bg-[#3BAEA0] text-white" },
-  { label: "Servido", color: "bg-gray-200 text-gray-700" },
+  { value: "pending", label: "Pendiente", color: "bg-yellow-100 text-yellow-800" },
+  { value: "in_preparation", label: "En preparación", color: "bg-[#3BBAC9] text-white" },
+  { value: "ready", label: "Listo para servir", color: "bg-[#3BAEA0] text-white" },
+  { value: "served", label: "Servido", color: "bg-gray-200 text-gray-700" },
 ];
 
 export default function SeguimientoPedidos() {
@@ -21,7 +21,7 @@ export default function SeguimientoPedidos() {
   }, []);
 
   const handleStatusChange = async (id, newStatus) => {
-    const statusStr = STATUS_OPTIONS[newStatus].label.toLowerCase().replace(/ /g, "_");
+    const statusStr = STATUS_OPTIONS[newStatus].value.toLowerCase().replace(/ /g, "_");
 
     try {
       await axios.patch(`http://localhost:8000/orders/${id}/status?status=${statusStr}`);

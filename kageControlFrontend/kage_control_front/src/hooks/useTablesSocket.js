@@ -6,21 +6,27 @@ export function useTablesSocket() {
   const [tables, setTables] = useState([]);
 
   useEffect(() => {
-    // 1) Obtenemos estado inicial vía HTTP
-    axiosClient
-      .get("/tables")
-      .then((res) => {
-        setTables(res.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching initial tables:", err);
-      });
+    let isMounted = true;
 
-    // 2) Abrimos WS para actualizaciones
+    // Traemos el estado inicial con REST
+    const fetchInitialTables = async () => {
+      try {
+        const res = await axiosClient.get("/tables");
+        if (isMounted && Array.isArray(res.data)) {
+          setTables(res.data);
+        }
+      } catch (err) {
+        console.error("Error fetching initial tables:", err);
+      }
+    };
+
+    fetchInitialTables();
+
+    // Abrimos WebSocket usando tu helper
     const socket = connectWebSocket(
       "/ws/tables",
       (data) => {
-        if (data.event === "update_tables") {
+        if (data.event === "update_tables" && Array.isArray(data.tables)) {
           setTables(data.tables);
         }
       },
@@ -28,8 +34,8 @@ export function useTablesSocket() {
       (ev) => console.log("WS closed:", ev)
     );
 
-    // 3) Limpiamos al desmontar
     return () => {
+      isMounted = false;
       if (socket.readyState === WebSocket.OPEN) {
         socket.close();
       }

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket
+
 from .database import Base, engine
-from .routers import tables, arrivals, orders, kitchen, reports, auth
+from .routers import tables, arrivals, orders, kitchen, reports, auth, ingredients, menu
 from .websocket import manager
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +23,8 @@ app.include_router(orders.router)
 app.include_router(kitchen.router)
 app.include_router(reports.router)
 app.include_router(auth.router)
+app.include_router(ingredients.router)
+app.include_router(menu.router)
 
 # WebSocket para actualización en tiempo real del plano de mesas
 @app.websocket("/ws/tables")

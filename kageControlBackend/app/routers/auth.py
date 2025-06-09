@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from typing import List
 from .. import schemas, crud, database, models
 from ..auth import verify_password, create_access_token
 
@@ -28,3 +29,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "role": user.role.value
     })
     return {"access_token": access_token}
+
+
+@router.get("/users", response_model=List[schemas.User])
+def list_users(db: Session = Depends(database.get_db)):
+    users = crud.get_all_users(db)
+    return users

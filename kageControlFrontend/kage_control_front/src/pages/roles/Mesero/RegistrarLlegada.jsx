@@ -1,12 +1,10 @@
-// 🎨 REGISTRAR LLEGADA - Estilo Gourmet Aplicado (intermedio: simple pero con más carácter visual)
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axiosClient from "../../../api/axiosClient";
 import butterup from "butteruptoasts";
 import "../../../styles/butterup-2.0.0/butterup-2.0.0/butterup.css";
 
 export default function RegistrarLlegada() {
-  const availableTables = Array.from({ length: 12 }, (_, i) => i + 1);
-
+  const [availableTables, setAvailableTables] = useState([]);
   const [form, setForm] = useState({
     nombre: "",
     comensales: 1,
@@ -17,6 +15,27 @@ export default function RegistrarLlegada() {
 
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Cargar mesas libres desde backend al cargar el componente
+  useEffect(() => {
+    async function fetchTables() {
+      try {
+        const res = await axiosClient.get("/tables"); // <-- ajustar según tu API
+        // Suponemos que res.data es un array de mesas con estructura { id, status }
+        const libres = res.data.filter((mesa) => mesa.status === "free" || mesa.status === "libre");
+        setAvailableTables(libres.map((m) => m.id));
+      } catch (error) {
+        butterup.toast({
+          title: "Error al cargar mesas",
+          message: "No se pudieron obtener las mesas disponibles",
+          location: "top-right",
+          type: "error",
+        });
+      }
+    }
+
+    fetchTables();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -58,6 +77,9 @@ export default function RegistrarLlegada() {
 
       setSuccessMsg(msg);
       showToast("success", "Llegada registrada", msg);
+
+      // Actualizar lista de mesas disponibles tras asignación
+      setAvailableTables((prev) => prev.filter((id) => id !== mesaId));
 
       setForm({ nombre: "", comensales: 1, table_id: "", contacto: "", ubicacion: "" });
     } catch (err) {

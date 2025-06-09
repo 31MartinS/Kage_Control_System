@@ -8,21 +8,29 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 @router.post("/", response_model=schemas.Order)
 def create_order(data: schemas.OrderCreate, db: Session = Depends(database.get_db)):
-    return crud.create_order(db, data)
+    try:
+        return crud.create_order(db, data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/tracking", response_model=list[dict])
 def get_orders_for_tracking(db: Session = Depends(database.get_db)):
     orders = crud.get_all_orders(db)
     result = []
     for order in orders:
+        items = []
+        for od in order.dishes:
+            items.append(f"{od.quantity}x {od.dish.name}")
         result.append({
             "id": order.id,
             "table": order.arrival.table.name if order.arrival and order.arrival.table else None,
-            "items": [order.item],  # si se agrupan, aquí deberías combinarlas
+            "items": items,
             "status": list(OrderStatus).index(order.status),
             "time": order.arrival.assigned_at.strftime("%H:%M") if order.arrival else "??:??",
         })
     return result
+
 @router.get("/{arrival_id}", response_model=list[schemas.Order])
 def list_orders(arrival_id: int, db: Session = Depends(database.get_db)):
     return crud.get_orders_by_arrival(db, arrival_id)

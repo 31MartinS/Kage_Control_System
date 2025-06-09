@@ -1,4 +1,3 @@
-// src/pages/roles/Mesero/PlanoMesas.jsx
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTablesSocket } from "../../../hooks/useTablesSocket";
@@ -43,14 +42,19 @@ export default function PlanoMesas() {
 
   const mesasEstado = useMemo(() => {
     const map = {};
+    if (!Array.isArray(tables)) return map; // protección por si tables no es array
     tables.forEach((t) => {
-      const local = STATUS_MAP[t.status] || "desconocido";
-      map[t.id] = local;
+      const estadoLocal = STATUS_MAP[t.status] || "desconocido";
+      map[t.id] = estadoLocal;
     });
     return map;
   }, [tables]);
 
-  const posiciones = TABLES_POSITIONS[piso];
+  const posiciones = TABLES_POSITIONS[piso] || [];
+
+  const posicionesFiltradas = posiciones.filter(({ id }) =>
+    mesasEstado.hasOwnProperty(id)
+  );
 
   return (
     <div className="space-y-6">
@@ -78,7 +82,7 @@ export default function PlanoMesas() {
         className="relative h-[700px] bg-cover bg-center rounded-2xl shadow-lg border border-[#EADBC8] overflow-hidden"
         style={{ backgroundImage: "url(/plano-restaurante.png)" }}
       >
-        {posiciones.map(({ id, top, left }) => {
+        {posicionesFiltradas.map(({ id, top, left }) => {
           const estado = mesasEstado[id] || "desconocido";
           const colorClass = STATUS_COLOR[estado] || STATUS_COLOR.desconocido;
 
