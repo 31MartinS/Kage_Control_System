@@ -1,4 +1,6 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+from app.notificaciones.event_listeners import register_listeners
 
 from .database import Base, engine
 from .routers import tables, arrivals, orders, kitchen, reports, auth, ingredients, menu
@@ -7,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Crear las tablas
 Base.metadata.create_all(bind=engine)
+
+
 
 app = FastAPI(title="KageControl API")
 app.add_middleware(
@@ -26,6 +30,9 @@ app.include_router(auth.router)
 app.include_router(ingredients.router)
 app.include_router(menu.router)
 
+# Registrar observadores
+register_listeners()
+
 # WebSocket para actualización en tiempo real del plano de mesas
 @app.websocket("/ws/tables")
 async def websocket_tables(ws: WebSocket):
@@ -34,4 +41,12 @@ async def websocket_tables(ws: WebSocket):
         while True:
             await ws.receive_text()  # cliente puede enviar un ping si se desea
     except:
+        manager.disconnect(ws)
+@app.websocket("/ws/notifications")
+async def websocket_notifications(ws: WebSocket):
+    await manager.connect(ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
         manager.disconnect(ws)

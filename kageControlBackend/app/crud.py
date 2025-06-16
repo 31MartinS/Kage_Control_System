@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+
+from app.notificaciones.event_bus import event_bus
 from . import models, schemas
 from datetime import datetime
 from .models import User, UserRole
@@ -65,6 +67,7 @@ def create_order(db: Session, data: schemas.OrderCreate):
 
     db.commit()
     db.refresh(order)
+    
     return order
 
 
@@ -75,6 +78,7 @@ def update_order_status(db: Session, order_id: int, status: models.OrderStatus):
     order = db.query(models.Order).get(order_id)
     order.status = status
     db.commit(); db.refresh(order)
+    
     return order
 def get_all_orders(db: Session):
     return db.query(models.Order).all()
@@ -92,14 +96,35 @@ def create_user(db: Session, user: UserCreate):
         phone=user.phone,
         role=user.role,
         hire_date=user.hire_date,
-        hashed_password=get_password_hash(user.password)
+        hashed_password=get_password_hash(user.password),
+        estado=user.estado  # ← AÑADIDO
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+def get_user_by_id(db: Session, user_id: int):
+    return db.query(User).filter(User.id == user_id).first()
+
 def get_all_users(db: Session):
     return db.query(models.User).all()
+
+def update_user(db: Session, user_id: int, updates: dict):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    for key, value in updates.items():
+        setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    return user
+def delete_user(db: Session, user_id: int):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return False
+    db.delete(user)
+    db.commit()
+    return True
 
 #Inventario
 

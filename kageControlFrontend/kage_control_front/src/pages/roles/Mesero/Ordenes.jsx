@@ -37,18 +37,17 @@ export default function Ordenes() {
     0
   );
 
-const confirmarOrden = async () => {
-  if (!arrivalId) {
-    butterup.toast({
-      title: "Error",
-      message: "Por favor selecciona un usuario (arrival) antes de confirmar la orden.",
-      icon: "x",
-      style: "error",
-    });
-    return;
-  }
-  try {
-    // Armar el objeto con todos los platos del carrito
+  const confirmarOrden = async () => {
+    if (!arrivalId) {
+      butterup.toast({
+        title: "Error",
+        message: "Por favor selecciona un arrival antes de confirmar la orden.",
+        icon: "x",
+        style: "error",
+      });
+      return;
+    }
+
     const dishes = Object.values(carrito).map((item) => ({
       dish_id: item.id,
       quantity: item.cantidad,
@@ -57,7 +56,7 @@ const confirmarOrden = async () => {
     if (dishes.length === 0) {
       butterup.toast({
         title: "Carrito vacío",
-        message: "Agrega al menos un platillo al carrito antes de confirmar.",
+        message: "Agrega al menos un platillo antes de confirmar.",
         icon: "x",
         style: "error",
       });
@@ -66,32 +65,35 @@ const confirmarOrden = async () => {
 
     const data = {
       arrival_id: parseInt(arrivalId),
-      station: "cocina", // o la estación que quieras enviar
-      notes: "",         // opcional, puedes poner campo para que el usuario agregue notas
-      dishes: dishes,
+      station: "cocina",
+      notes: "",
+      dishes,
     };
 
-    await axios.post("http://localhost:8000/orders/", data);
+    try {
+      console.log("Enviando orden:", data); // DEBUG
 
-    setCarrito({});
-    butterup.toast({
-      title: "Orden Confirmada",
-      message: "La orden fue enviada correctamente ✅",
-      icon: "check",
-      style: "success",
-    });
-    cargarOrdenes();
-  } catch (error) {
-    console.error("Error al enviar orden:", error);
-    butterup.toast({
-      title: "Error",
-      message: "Error al enviar la orden ❌",
-      icon: "x",
-      style: "error",
-    });
-  }
-};
+      await axios.post("http://localhost:8000/orders/", data);
 
+      setCarrito({});
+      butterup.toast({
+        title: "Orden Confirmada",
+        message: "La orden fue enviada correctamente ✅",
+        icon: "check",
+        style: "success",
+      });
+      cargarOrdenes();
+    } catch (error) {
+      console.error("Error al enviar orden:", error);
+      console.log("Detalle del error:", error.response?.data); // DEBUG
+      butterup.toast({
+        title: "Error",
+        message: error.response?.data?.detail || "Error al enviar la orden ❌",
+        icon: "x",
+        style: "error",
+      });
+    }
+  };
 
   const cargarUsuarios = async () => {
     try {
@@ -234,9 +236,7 @@ const confirmarOrden = async () => {
             <ul className="space-y-2 max-h-64 overflow-y-auto">
               {ordenes.map((order) => (
                 <li key={order.id} className="border border-[#EADBC8] p-3 rounded-xl bg-[#FFF]">
-                  <p className="text-sm text-[#4D4D4D]">
-                    {order.quantity} × {order.item}
-                  </p>
+                  <p className="text-sm text-[#4D4D4D]">Orden #{order.id}</p>
                   <p className="text-xs text-gray-500">Estado: {order.status}</p>
                 </li>
               ))}

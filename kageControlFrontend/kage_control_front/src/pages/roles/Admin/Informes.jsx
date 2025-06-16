@@ -37,9 +37,11 @@ export default function Informes() {
     }
 
     try {
-      const url = `http://localhost:8000/reports/attendance/pdf?start=${encodeURIComponent(
-        desde
-      )}&end=${encodeURIComponent(hasta)}`;
+      const params = new URLSearchParams();
+      params.append("start", desde);
+      params.append("end", hasta);
+      seleccionadas.forEach((seccion) => params.append("sections", seccion));
+      const url = `http://localhost:8000/reports/pdf?${params.toString()}`;
 
       const res = await axios.get(url, {
         responseType: "blob",

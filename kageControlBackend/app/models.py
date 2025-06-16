@@ -69,7 +69,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     hire_date = Column(Date)
     hashed_password = Column(String(128), nullable=False)
-
+    estado = Column(String(20), default="activo")
 
 
 class Ingredient(Base):

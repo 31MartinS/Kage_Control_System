@@ -1,6 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import Logo from "../assets/logo.png";
+import NotificacionesSocket from "./NotificacionesSocket";
 import {
   ConciergeBell,
   UtensilsCrossed,
@@ -50,6 +51,7 @@ export default function Sidebar() {
   return (
     <aside className="bg-[#FFF8F0] h-screen w-80 flex flex-col justify-between border-r border-[#EADBC8] shadow-md">
       <div>
+        <NotificacionesSocket />
         {/* Logo */}
         <div className="flex justify-center mt-6 mb-4">
           <img src={Logo} alt="KageControl" className="w-28" />

@@ -35,3 +35,22 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def list_users(db: Session = Depends(database.get_db)):
     users = crud.get_all_users(db)
     return users
+@router.get("/users/{user_id}", response_model=schemas.User)
+def get_user_by_id(user_id: int, db: Session = Depends(database.get_db)):
+    user = crud.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return user
+
+@router.patch("/users/{user_id}", response_model=schemas.User)
+def update_user_route(user_id: int, updates: schemas.UserUpdate, db: Session = Depends(database.get_db)):
+    user = crud.update_user(db, user_id, updates.dict(exclude_unset=True))
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return user
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user_route(user_id: int, db: Session = Depends(database.get_db)):
+    success = crud.delete_user(db, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")

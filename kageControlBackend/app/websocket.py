@@ -1,3 +1,5 @@
+# app/websocket.py
+
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import List
 
@@ -13,7 +15,15 @@ class ConnectionManager:
         self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            await connection.send_json(message)
+        living: List[WebSocket] = []
+        for ws in self.active_connections:           # ← usar active_connections
+            try:
+                await ws.send_json(message)
+                living.append(ws)
+            except WebSocketDisconnect:
+                # Se desconectó en medio de un envío
+                pass
+        # Actualiza la lista manteniendo sólo los aún conectados
+        self.active_connections = living             # ← actualizar active_connections
 
 manager = ConnectionManager()
