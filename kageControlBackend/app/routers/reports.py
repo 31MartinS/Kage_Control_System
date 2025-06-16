@@ -1,87 +1,83 @@
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
-from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-
+from datetime import datetime, timedelta
 from .. import database, models
+from collections import defaultdict
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-@router.get("/attendance/pdf")
-def attendance_report_pdf(
-    start: datetime = Query(..., description="Fecha y hora inicio (RFC3339)"),
-    end:   datetime = Query(..., description="Fecha y hora fin (RFC3339)"),
-    db:    Session  = Depends(database.get_db)
-):
-    # 1) Obtén todas las llegadas en el rango
-    arrivals = (
-        db.query(models.Arrival, models.Table.name.label("table_name"))
-        .join(models.Table, models.Arrival.table_id == models.Table.id)
-        .filter(models.Arrival.assigned_at.between(start, end))
-        .order_by(models.Arrival.assigned_at)
-        .all()
-    )
-    total = len(arrivals)
 
-    # 2) Prepara PDF
-    buffer = BytesIO()
-    styles = getSampleStyleSheet()
-    p = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+@router.get("/dashboard")
+def admin_dashboard_data(db: Session = Depends(database.get_db)):
+    # === RESERVAS ===
+    all_arrivals = db.query(models.Arrival).all()
 
-    # Título
-    p.setFont("Helvetica-Bold", 18)
-    p.drawCentredString(width/2, height - 50, "Informe de Atención por Mesa")
+    reservas_por_dia = defaultdict(int)
+    estados = {"free": 0, "reserved": 0, "occupied": 0, "cleaning": 0}
+    horas_pico = defaultdict(int)
+    duraciones = []
 
-    # Fechas y resumen
-    p.setFont("Helvetica", 12)
-    p.drawString(50, height - 80, f"Desde: {start.strftime('%Y-%m-%d %H:%M')}")
-    p.drawString(300, height - 80, f"Hasta: {end.strftime('%Y-%m-%d %H:%M')}")
-    p.drawString(50, height - 100, f"Total de llegadas: {total}")
+    for a in all_arrivals:
+        fecha = a.assigned_at.date().isoformat()
+        reservas_por_dia[fecha] += 1
+        hora = a.assigned_at.hour
+        horas_pico[hora] += 1
+        estados[a.table.status.value] += 1
 
-    # Espacio
-    y = height - 130
+    # Simulación de duración
+    for i in range(len(all_arrivals) - 1):
+        duraciones.append(30 + (i % 60))  # valores ficticios
 
-    # Si no hay llegadas, mensaje
-    if total == 0:
-        p.drawString(50, y, "No se encontraron llegadas en ese período.")
-    else:
-        # Construye tabla de detalles
-        data = [["Mesa", "Cliente", "Grupo", "Hora Asignada"]]
-        for arr, table_name in arrivals:
-            data.append([
-                table_name,
-                arr.customer_name,
-                str(arr.party_size),
-                arr.assigned_at.strftime("%Y-%m-%d %H:%M")
-            ])
-        # Crea Table de reportlab.platypus
-        table = Table(data, colWidths=[80, 200, 60, 120])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#264653")),
-            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-            ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
-            ("FONTSIZE", (0,0), (-1,-1), 10),
-            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ]))
-        # Dibuja la tabla
-        table.wrapOn(p, width, height)
-        table.drawOn(p, 50, y - 20 - 15*len(data))
+    # === MESEROS ===
+    users = db.query(models.User).filter(models.User.role == "mesero").all()
+    meseros = []
+    for u in users:
+        meseros.append({
+            "nombre": u.full_name,
+            "ordenes": len(all_arrivals) // max(len(users), 1),
+            "tiempo": 15 + len(u.username),  # Simulado
+            "ventas": 20 * len(u.username)  # Simulado
+        })
 
-    p.showPage()
-    p.save()
-    buffer.seek(0)
+    # === PLATOS Y ÓRDENES ===
+    orders = db.query(models.Order).all()
+    platos_count = defaultdict(int)
+    franja_horas = defaultdict(int)
 
-    return StreamingResponse(
-        buffer,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=attendance_report.pdf"}
-    )
+    for o in orders:
+        hora = o.arrival.assigned_at.hour
+        franja_horas[hora] += 1
+        for d in o.dishes:
+            platos_count[d.dish.name] += d.quantity
+
+    platos_ordenados = sorted(platos_count.items(), key=lambda x: x[1], reverse=True)
+    top_platos = [{"nombre": k, "cantidad": v} for k, v in platos_ordenados[:10]]
+
+    # === COMENSALES ===
+    total_por_fecha = defaultdict(int)
+    tamanio_grupo = []
+
+    for a in all_arrivals:
+        fecha = a.assigned_at.date().isoformat()
+        total_por_fecha[fecha] += a.party_size
+        tamanio_grupo.append(a.party_size)
+
+    return {
+        "reservas": {
+            "por_dia": reservas_por_dia,
+            "por_estado": estados,
+            "horas_pico": horas_pico,
+            "duracion_promedio": sum(duraciones) / len(duraciones) if duraciones else 0
+        },
+        "meseros": meseros,
+        "ordenes": {
+            "top_platos": top_platos,
+            "por_hora": franja_horas
+        },
+        "comensales": {
+            "por_dia": total_por_fecha,
+            "tamano_promedio": sum(tamanio_grupo) / len(tamanio_grupo) if tamanio_grupo else 0,
+            "no_shows": 0,  # opcional si implementas
+        }
+    }

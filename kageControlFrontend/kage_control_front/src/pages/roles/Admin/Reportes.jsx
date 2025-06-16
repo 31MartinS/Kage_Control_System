@@ -1,145 +1,214 @@
-import { useState } from "react";
-import { CalendarRange, BarChart3, RefreshCw, FileDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import axiosClient from "../../../api/axiosClient";
+import {
+  BarChart3,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Users,
+  Clock,
+  UtensilsCrossed,
+  PieChart,
+  CalendarDays,
+  ListTree
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  Pie,
+  PieChart as RePieChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Cell,
+  Legend,
+} from "recharts";
 
 export default function Reportes() {
-  const [fecha, setFecha] = useState("");
-  const [filtro, setFiltro] = useState("");
-  const [cargando, setCargando] = useState(false);
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState({
+    reservas: true,
+    meseros: false,
+    ordenes: false,
+    comensales: false,
+  });
 
-  const datosEjemplo = [
-    { mesa: "M1", pedidos: 12, tiempo: "14 min" },
-    { mesa: "M2", pedidos: 9, tiempo: "17 min" },
-    { mesa: "M3", pedidos: 6, tiempo: "15 min" },
-  ];
-
-  const generarDatos = () => {
-    setCargando(true);
-    setTimeout(() => {
-      setData(datosEjemplo);
-      setCargando(false);
-    }, 800);
+  const toggle = (key) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const exportarCSV = () => {
-    const filas = [["Mesa", "Pedidos", "Tiempo promedio"], ...data.map((d) => [d.mesa, d.pedidos, d.tiempo])];
-    const csv = filas.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reporte_${fecha}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosClient.get("/reports/dashboard");
+      setData(res.data);
+    } catch (error) {
+      console.error("Error al obtener estadísticas:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <div className="p-8 text-center text-[#4D4D4D] font-semibold">
+        Cargando estadísticas...
+      </div>
+    );
+  }
+
+  const COLORS = ["#3BAEA0", "#E76F51", "#F4A261", "#264653", "#A8DADC"];
+
+  const { reservas, meseros, ordenes, comensales } = data;
 
   return (
-    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-6">
-      <h1 className="text-3xl font-serif font-bold text-[#8D2E38] flex items-center gap-2">
-        <BarChart3 className="w-6 h-6" /> Reportes del Sistema
+    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-8">
+      <h1 className="text-3xl font-serif font-bold text-[#8D2E38] flex items-center gap-3">
+        <BarChart3 className="w-7 h-7" /> Estadísticas del Sistema
       </h1>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-[#EADBC8] p-6 shadow space-y-4">
-          <h2 className="text-lg font-semibold text-[#4D4D4D]">Reportes recientes</h2>
-          <ul className="space-y-2 text-sm">
-            <li>
-              <button
-                onClick={() => {
-                  setFiltro("atencion");
-                  setFecha(new Date().toISOString().split("T")[0]);
-                  generarDatos();
-                }}
-                className="text-[#264653] hover:underline"
-              >
-                Resumen diario de atención
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => {
-                  setFiltro("estacion");
-                  setFecha(new Date().toISOString().split("T")[0]);
-                  generarDatos();
-                }}
-                className="text-[#264653] hover:underline"
-              >
-                Pedidos por estación de cocina
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => {
-                  setFiltro("tiempos");
-                  setFecha(new Date().toISOString().split("T")[0]);
-                  generarDatos();
-                }}
-                className="text-[#264653] hover:underline"
-              >
-                Reporte de tiempos promedio
-              </button>
-            </li>
-          </ul>
-          {/* BACKEND: Aquí se puede reemplazar por historial real de reportes del usuario */}
-        </div>
+      {/* Reservas */}
+      <Section
+        title="Estadísticas de Reservas"
+        icon={<CalendarDays />}
+        expanded={expanded.reservas}
+        onToggle={() => toggle("reservas")}
+      >
+        <p className="mb-2 text-[#4D4D4D] font-medium">
+          Duración promedio de estancia:{" "}
+          <span className="font-bold">{reservas.duracion_promedio.toFixed(1)} min</span>
+        </p>
 
-        <div className="bg-white rounded-2xl border border-[#EADBC8] p-6 shadow space-y-4">
-          <label className="block text-sm text-[#4D4D4D] font-medium mb-1">Seleccionar fecha</label>
-          <div className="flex items-center gap-2">
-            <CalendarRange className="w-5 h-5 text-[#264653]" />
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className="px-4 py-2 border border-[#EADBC8] rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
-            />
-          </div>
+        <h3 className="text-sm text-[#264653] font-semibold mt-4">Reservas por Día</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={Object.entries(reservas.por_dia).map(([k, v]) => ({ fecha: k, total: v }))}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="fecha" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="total" fill="#3BAEA0" />
+          </BarChart>
+        </ResponsiveContainer>
 
-          <button
-            onClick={generarDatos}
-            disabled={!fecha || cargando}
-            className="flex items-center gap-2 bg-[#264653] text-white px-5 py-2 rounded-full font-medium hover:bg-[#1b3540] transition disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${cargando ? "animate-spin" : "hidden"}`} />
-            <span>{cargando ? "Cargando..." : "Generar reporte"}</span>
-          </button>
-        </div>
-      </div>
-
-      {data.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[#EADBC8] p-6 shadow space-y-4 mt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-[#4D4D4D]">
-              Resultados del {fecha} ({filtro})
-            </h3>
-            <button
-              onClick={exportarCSV}
-              className="flex items-center gap-2 bg-[#3BAEA0] text-white px-4 py-2 rounded-full font-medium hover:bg-[#2e968d] transition"
+        <h3 className="text-sm text-[#264653] font-semibold mt-4">Reservas por Estado</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <RePieChart>
+            <Pie
+              data={Object.entries(reservas.por_estado).map(([k, v]) => ({ name: k, value: v }))}
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              label
+              dataKey="value"
             >
-              <FileDown className="w-4 h-4" />
-              Exportar CSV
-            </button>
-          </div>
-          <table className="w-full text-sm text-left text-gray-600">
-            <thead className="text-xs uppercase bg-[#FAE5D3] text-[#8D2E38]">
-              <tr>
-                <th className="px-4 py-2">Mesa</th>
-                <th className="px-4 py-2">Pedidos</th>
-                <th className="px-4 py-2">Tiempo promedio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((d, i) => (
-                <tr key={i} className="bg-white border-b hover:bg-[#fdf4ec]">
-                  <td className="px-4 py-2">{d.mesa}</td>
-                  <td className="px-4 py-2">{d.pedidos}</td>
-                  <td className="px-4 py-2">{d.tiempo}</td>
-                </tr>
+              {Object.entries(reservas.por_estado).map((_, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
-            </tbody>
-          </table>
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </RePieChart>
+        </ResponsiveContainer>
+      </Section>
+
+      {/* Meseros */}
+      <Section
+        title="Rendimiento del Personal"
+        icon={<Users />}
+        expanded={expanded.meseros}
+        onToggle={() => toggle("meseros")}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={meseros}>
+            <XAxis dataKey="nombre" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="ordenes" fill="#3BAEA0" name="Órdenes" />
+            <Bar dataKey="ventas" fill="#E76F51" name="Ventas $" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Section>
+
+      {/* Consumo */}
+      <Section
+        title="Órdenes y Consumo"
+        icon={<UtensilsCrossed />}
+        expanded={expanded.ordenes}
+        onToggle={() => toggle("ordenes")}
+      >
+        <h3 className="text-sm text-[#264653] font-semibold mb-2">Top 10 Platos Más Vendidos</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart
+            data={ordenes.top_platos}
+            layout="vertical"
+            margin={{ left: 80 }}
+          >
+            <XAxis type="number" />
+            <YAxis dataKey="nombre" type="category" />
+            <Tooltip />
+            <Bar dataKey="cantidad" fill="#F4A261" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Section>
+
+      {/* Comensales */}
+      <Section
+        title="Comensales y Grupos"
+        icon={<ListTree />}
+        expanded={expanded.comensales}
+        onToggle={() => toggle("comensales")}
+      >
+        <p className="text-[#4D4D4D] font-medium mb-2">
+          Tamaño promedio de grupo:{" "}
+          <span className="font-bold">{comensales.tamano_promedio.toFixed(1)}</span>
+        </p>
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={Object.entries(comensales.por_dia).map(([k, v]) => ({ fecha: k, total: v }))}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="fecha" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="total" stroke="#8D2E38" />
+          </LineChart>
+        </ResponsiveContainer>
+      </Section>
+
+      <div className="flex justify-end">
+        <button
+          onClick={cargarDatos}
+          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-6 py-2 rounded-full font-medium hover:bg-[#2d9c92] transition"
+        >
+          <RefreshCw className="w-5 h-5" /> Actualizar estadísticas
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon, expanded, children, onToggle }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#EADBC8] shadow-md">
+      <button
+        onClick={onToggle}
+        className="w-full px-6 py-4 flex justify-between items-center text-left font-semibold text-[#264653] text-xl"
+      >
+        <div className="flex items-center gap-3">
+          {icon}
+          {title}
         </div>
-      )}
+        {expanded ? <ChevronUp /> : <ChevronDown />}
+      </button>
+      {expanded && <div className="px-6 pb-6">{children}</div>}
     </div>
   );
 }
