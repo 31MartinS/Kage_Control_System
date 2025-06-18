@@ -110,7 +110,7 @@ export default function Sidebar() {
               to={to}
               className={`
                 flex items-center gap-3 py-2 px-2 mx-2 rounded-lg cursor-pointer
-                hover:${highlight} transition-all
+                hover:bg-[#3BAEA0] transition-all
                 ${expanded ? "justify-start" : "justify-center"}
                 ${location.pathname === to ? highlight : ""}
               `}
@@ -144,7 +144,7 @@ export default function Sidebar() {
       {/* Fondo oscuro para drawer móvil */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden"
+          className="fixed inset-0 bg-transparent z-30 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}

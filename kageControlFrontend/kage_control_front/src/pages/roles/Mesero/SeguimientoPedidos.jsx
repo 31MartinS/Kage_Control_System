@@ -102,7 +102,7 @@ export default function SeguimientoPedidos() {
                 <select
                   value={ord.status}
                   onChange={(e) => handleStatusChange(ord.id, e.target.value)}
-                  disabled={ord.status === "served"}
+                  disabled={ord.status === "served" || ord.status === "pending"}
                   className={`px-4 py-2 border-2 rounded-full font-semibold text-[#264653] transition
                     ${
                       ord.status === "served"
