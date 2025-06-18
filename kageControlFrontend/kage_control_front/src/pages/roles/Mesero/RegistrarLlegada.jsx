@@ -15,6 +15,27 @@ const colors = {
   boton2: "bg-[#3BAEA0] hover:bg-[#329b91]",
 };
 
+// --- VALIDACIONES ---
+function validarNombre(nombre) {
+  return /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,40}$/.test(nombre.trim());
+}
+
+function validarComensales(n) {
+  const num = Number(n);
+  return Number.isInteger(num) && num >= 1 && num <= 20;
+}
+
+function validarContacto(valor) {
+  if (!valor) return true;
+  const telefono = /^[0-9+() -]{7,20}$/;
+  const email = /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/;
+  return telefono.test(valor) || email.test(valor);
+}
+
+function validarUbicacion(txt) {
+  return !txt || (txt.length <= 40);
+}
+
 export default function RegistrarLlegada() {
   const [availableTables, setAvailableTables] = useState([]);
   const [form, setForm] = useState({
@@ -28,6 +49,13 @@ export default function RegistrarLlegada() {
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [errores, setErrores] = useState({});
+  const [touched, setTouched] = useState({
+    nombre: false,
+    comensales: false,
+    contacto: false,
+    ubicacion: false,
+  });
 
   useEffect(() => {
     async function fetchTables() {
@@ -50,11 +78,30 @@ export default function RegistrarLlegada() {
     fetchTables();
   }, []);
 
+  // VALIDACIONES DE ENTRADA
+  useEffect(() => {
+    setErrores({
+      nombre: !validarNombre(form.nombre) ? "Solo letras, min. 3 caracteres" : "",
+      comensales: !validarComensales(form.comensales) ? "Entre 1 y 20" : "",
+      contacto: !validarContacto(form.contacto) ? "Teléfono o email válido" : "",
+      ubicacion: !validarUbicacion(form.ubicacion) ? "Máx. 40 caracteres" : "",
+    });
+  }, [form]);
+
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setForm((f) => ({
       ...f,
       [name]: type === "number" ? +value : value,
+    }));
+  };
+
+  // Ahora con onBlur:
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
     }));
   };
 
@@ -68,9 +115,16 @@ export default function RegistrarLlegada() {
     return detail || "Error al registrar llegada";
   };
 
+  // Al enviar, marca todos los campos como "touched"
   const handleSubmit = (e) => {
     e.preventDefault();
-    setShowModal(true); // Ahora, solo muestra el modal
+    setTouched({
+      nombre: true,
+      comensales: true,
+      contacto: true,
+      ubicacion: true,
+    });
+    setShowModal(true);
   };
 
   const confirmSubmit = async () => {
@@ -99,12 +153,24 @@ export default function RegistrarLlegada() {
       setAvailableTables((prev) => prev.filter((id) => id !== mesaId));
 
       setForm({ nombre: "", comensales: 1, table_id: "", contacto: "", ubicacion: "" });
+      setTouched({
+        nombre: false,
+        comensales: false,
+        contacto: false,
+        ubicacion: false,
+      });
     } catch (err) {
       showToast("error", "Error al registrar llegada", parseError(err));
     } finally {
       setLoading(false);
     }
   };
+
+  const formInvalido =
+    loading ||
+    Object.values(errores).some((e) => e) ||
+    !form.nombre ||
+    !form.comensales;
 
   return (
     <div className={`${colors.fondo} p-10 rounded-3xl shadow-2xl border ${colors.borde} max-w-3xl mx-auto`}>
@@ -119,10 +185,14 @@ export default function RegistrarLlegada() {
             name="nombre"
             value={form.nombre}
             onChange={handleChange}
+            onBlur={handleBlur}
             required
             className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
             autoComplete="off"
           />
+          {errores.nombre && touched.nombre && (
+            <p className="text-[#E76F51] text-xs mt-1">{errores.nombre}</p>
+          )}
 
           <label className="block text-[#264653] font-semibold">Número de comensales</label>
           <input
@@ -132,11 +202,15 @@ export default function RegistrarLlegada() {
             max="20"
             value={form.comensales}
             onChange={handleChange}
+            onBlur={handleBlur}
             required
             className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
           />
+          {errores.comensales && touched.comensales && (
+            <p className="text-[#E76F51] text-xs mt-1">{errores.comensales}</p>
+          )}
 
-          <label className="block text-[#264653] font-semibold">Mesa (opcional)</label>
+          <label className="block text-[#264653] font-semibold">Mesa</label>
           <select
             name="table_id"
             value={form.table_id}
@@ -151,27 +225,37 @@ export default function RegistrarLlegada() {
         </div>
 
         <div className="space-y-4 md:col-span-1">
-          <label className="block text-[#264653] font-semibold">Contacto (opcional)</label>
+          <label className="block text-[#264653] font-semibold">Contacto</label>
           <input
             name="contacto"
             value={form.contacto}
             onChange={handleChange}
+            onBlur={handleBlur}
             className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
           />
+          {errores.contacto && touched.contacto && (
+            <p className="text-[#E76F51] text-xs mt-1">{errores.contacto}</p>
+          )}
 
-          <label className="block text-[#264653] font-semibold">Preferencia de ubicación (opcional)</label>
+          <label className="block text-[#264653] font-semibold">Preferencia de ubicación</label>
           <input
             name="ubicacion"
             value={form.ubicacion}
             onChange={handleChange}
+            onBlur={handleBlur}
             className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
           />
+          {errores.ubicacion && touched.ubicacion && (
+            <p className="text-[#E76F51] text-xs mt-1">{errores.ubicacion}</p>
+          )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={formInvalido}
             className={`w-full py-3 mt-1 rounded-full font-semibold text-white text-lg tracking-wide transition font-sans shadow-lg ${
-              loading ? "bg-gray-400" : "bg-[#3BAEA0] hover:bg-[#2f9b90]"
+              formInvalido
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#3BAEA0] hover:bg-[#2f9b90]"
             }`}
           >
             {loading ? "Registrando..." : "Asignar mesa"}
@@ -188,8 +272,6 @@ export default function RegistrarLlegada() {
       {/* Modal de confirmación */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/0">
-          {/* Fondo transparente */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 pointer-events-none" />
           <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center font-sans border-2 border-[#3BAEA0]">
             <h2 className="text-2xl font-bold mb-4 text-[#264653] font-sans">¿Confirmar llegada?</h2>
             <ul className="mb-6 w-full text-left text-[#3BAEA0] text-base">

@@ -26,6 +26,32 @@ export default function Usuarios() {
     estado: "activo",
   });
 
+  // ---- VALIDACIONES ----
+  const [errores, setErrores] = useState({});
+  const [touched, setTouched] = useState({
+    username: false,
+    full_name: false,
+    email: false,
+    phone: false,
+    password: false,
+  });
+
+  function validarUsuario(f) {
+    return {
+      username: (!/^[\w.-]{3,20}$/.test(f.username)) ? "3-20 letras/números/._-" : "",
+      full_name: (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,40}$/.test(f.full_name.trim())) ? "Solo letras, min. 3" : "",
+      email: (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(f.email)) ? "Correo inválido" : "",
+      phone: (!!f.phone && !/^[0-9+() -]{7,20}$/.test(f.phone)) ? "Teléfono inválido" : "",
+      password: (!editando && (!f.password || f.password.length < 6)) ? "Mín. 6 caracteres" : "",
+    };
+  }
+
+  useEffect(() => {
+    setErrores(validarUsuario(formUsuario));
+  }, [formUsuario, editando]);
+
+  // ----------------------
+
   const fetchUsuarios = () => {
     axiosClient
       .get("/auth/users")
@@ -41,6 +67,12 @@ export default function Usuarios() {
     setFormUsuario({ ...formUsuario, [e.target.name]: e.target.value });
   };
 
+  // Marca el campo como tocado
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+  };
+
   const abrirModalCrear = () => {
     setEditando(false);
     setFormUsuario({
@@ -52,6 +84,13 @@ export default function Usuarios() {
       hire_date: "",
       password: "",
       estado: "activo",
+    });
+    setTouched({
+      username: false,
+      full_name: false,
+      email: false,
+      phone: false,
+      password: false,
     });
     setShowModal(true);
   };
@@ -68,6 +107,13 @@ export default function Usuarios() {
       hire_date: usuario.hire_date,
       password: "",
       estado: usuario.estado || "activo",
+    });
+    setTouched({
+      username: false,
+      full_name: false,
+      email: false,
+      phone: false,
+      password: false,
     });
     setShowModal(true);
   };
@@ -102,7 +148,24 @@ export default function Usuarios() {
       });
   };
 
+  // Al intentar guardar, marca todos los campos como tocados
+  const marcarTodosTouched = () => {
+    setTouched({
+      username: true,
+      full_name: true,
+      email: true,
+      phone: true,
+      password: true,
+    });
+  };
+
   const handleCrearUsuario = () => {
+    marcarTodosTouched();
+    if (Object.values(errores).some((e) => e) ||
+      !formUsuario.username ||
+      !formUsuario.full_name ||
+      !formUsuario.email ||
+      !formUsuario.password) return;
     axiosClient
       .post("/auth/register", formUsuario)
       .then((res) => {
@@ -121,6 +184,11 @@ export default function Usuarios() {
   };
 
   const handleActualizarUsuario = () => {
+    marcarTodosTouched();
+    if (Object.values(errores).some((e) => e) ||
+      !formUsuario.username ||
+      !formUsuario.full_name ||
+      !formUsuario.email) return;
     axiosClient
       .patch(`/auth/users/${usuarioEditandoId}`, formUsuario)
       .then(() => {
@@ -140,6 +208,13 @@ export default function Usuarios() {
         });
       });
   };
+
+  const formularioInvalido =
+    Object.values(errores).some((e) => e) ||
+    !formUsuario.username ||
+    !formUsuario.full_name ||
+    !formUsuario.email ||
+    (!editando && !formUsuario.password);
 
   return (
     <div className="bg-[#FFF8F0] p-8 sm:p-12 rounded-3xl shadow-2xl border-2 border-[#EADBC8] max-w-5xl mx-auto space-y-10 font-sans min-h-[70vh] relative">
@@ -235,39 +310,63 @@ export default function Usuarios() {
                 {editando ? "Editar Usuario" : "Registrar Nuevo Usuario"}
               </h2>
               <div className="grid grid-cols-2 gap-5 font-sans">
-                <input
-                  type="text"
-                  name="username"
-                  placeholder="Usuario"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.username}
-                  onChange={handleChange}
-                  disabled={editando}
-                />
-                <input
-                  type="text"
-                  name="full_name"
-                  placeholder="Nombre completo"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.full_name}
-                  onChange={handleChange}
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Correo electrónico"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.email}
-                  onChange={handleChange}
-                />
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="Teléfono"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.phone}
-                  onChange={handleChange}
-                />
+                <div>
+                  <input
+                    type="text"
+                    name="username"
+                    placeholder="Usuario"
+                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                    value={formUsuario.username}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    disabled={editando}
+                  />
+                  {errores.username && touched.username && (
+                    <p className="text-[#E76F51] text-xs mt-1">{errores.username}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    name="full_name"
+                    placeholder="Nombre completo"
+                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                    value={formUsuario.full_name}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {errores.full_name && touched.full_name && (
+                    <p className="text-[#E76F51] text-xs mt-1">{errores.full_name}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Correo electrónico"
+                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                    value={formUsuario.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {errores.email && touched.email && (
+                    <p className="text-[#E76F51] text-xs mt-1">{errores.email}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Teléfono"
+                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                    value={formUsuario.phone}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {errores.phone && touched.phone && (
+                    <p className="text-[#E76F51] text-xs mt-1">{errores.phone}</p>
+                  )}
+                </div>
                 <select
                   name="role"
                   className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
@@ -286,14 +385,20 @@ export default function Usuarios() {
                   onChange={handleChange}
                 />
                 {!editando && (
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Contraseña"
-                    className="input col-span-2 bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                    value={formUsuario.password}
-                    onChange={handleChange}
-                  />
+                  <div className="col-span-2">
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Contraseña"
+                      className="input w-full bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                      value={formUsuario.password}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                    {errores.password && touched.password && (
+                      <p className="text-[#E76F51] text-xs mt-1">{errores.password}</p>
+                    )}
+                  </div>
                 )}
                 <select
                   name="estado"
@@ -306,7 +411,13 @@ export default function Usuarios() {
                 </select>
                 <button
                   onClick={editando ? handleActualizarUsuario : handleCrearUsuario}
-                  className="col-span-2 bg-[#3BAEA0] text-white py-3 rounded-full hover:bg-[#329b91] transition font-bold shadow mt-2"
+                  type="button"
+                  disabled={formularioInvalido}
+                  className={`col-span-2 py-3 rounded-full font-bold shadow mt-2 transition ${
+                    formularioInvalido
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : "bg-[#3BAEA0] hover:bg-[#329b91] text-white"
+                  }`}
                 >
                   {editando ? "Guardar Cambios" : "Crear Usuario"}
                 </button>

@@ -11,7 +11,7 @@ export default function Notas() {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("http://localhost:8000/orders/1");
+        const res = await axios.get("http://localhost:8000/orders/12");
         setOrders(res.data);
       } catch (error) {
         console.error("Error al cargar notas:", error);

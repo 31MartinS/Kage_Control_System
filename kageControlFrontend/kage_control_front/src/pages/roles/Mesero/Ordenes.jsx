@@ -256,7 +256,7 @@ export default function Ordenes() {
                     </div>
                     <button
                       onClick={confirmarOrden}
-                      className={`w-full py-3 mt-2 rounded-full font-bold text-white text-base shadow-md transition ${COLORS.acento} ${COLORS.hoverAcento}`}
+                      className={`w-full py-3 mt-2 rounded-full font-bold text-white text-base shadow-md transition ${COLORS.boton} ${COLORS.hoverAcento}`}
                     >
                       Confirmar Orden
                     </button>
