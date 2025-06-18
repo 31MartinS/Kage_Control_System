@@ -17,13 +17,18 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 @router.post("/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     user = crud.get_user_by_username(db, form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    if (
+        not user
+        or not verify_password(form_data.password, user.hashed_password)
+        or user.estado != "activo"
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
+            detail="Usuario o contraseña incorrectos o cuenta inactiva",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # Payload: puedes añadir role en el token
+
     access_token = create_access_token({
         "sub": user.username,
         "role": user.role.value
@@ -49,8 +54,10 @@ def update_user_route(user_id: int, updates: schemas.UserUpdate, db: Session = D
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return user
 
-@router.delete("/users/{user_id}", status_code=204)
+@router.delete("/users/{user_id}", status_code=200)
 def delete_user_route(user_id: int, db: Session = Depends(database.get_db)):
     success = crud.delete_user(db, user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return { "message": f"Usuario con ID {user_id} eliminado correctamente" }
+
