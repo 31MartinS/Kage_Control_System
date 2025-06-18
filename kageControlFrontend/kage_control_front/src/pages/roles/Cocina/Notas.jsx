@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Notas() {
   const [orders, setOrders] = useState([]);
@@ -43,39 +44,48 @@ export default function Notas() {
   );
 
   return (
-    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-serif font-bold text-[#8D2E38]">Notas Dietéticas</h1>
+    <div className="bg-[#FFF8F0] p-8 sm:p-12 rounded-3xl shadow-2xl border-2 border-[#EADBC8] max-w-3xl mx-auto min-h-[65vh] space-y-10 font-sans">
+      <h1 className="text-4xl font-extrabold text-center text-[#3BAEA0] tracking-tight mb-4">
+        Notas Dietéticas
+      </h1>
 
-      <div className="w-full max-w-sm">
-        <label className="block text-[#4D4D4D] font-medium mb-1">Filtrar notas</label>
+      <div className="w-full max-w-md mx-auto mb-6">
+        <label className="block text-[#264653] font-semibold mb-1 font-sans">Filtrar notas</label>
         <input
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Ej. sin cebolla"
-          className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0]"
+          className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white font-semibold text-[#264653] focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] shadow"
         />
       </div>
 
       {loading ? (
-        <p className="text-[#6B7280]">Cargando notas...</p>
+        <p className="text-[#6B7280] text-center text-lg font-sans">Cargando notas...</p>
       ) : filteredNotes.length === 0 ? (
-        <p className="text-[#6B7280]">No hay notas que coincidan.</p>
+        <p className="text-[#6B7280] text-center text-lg font-sans">No hay notas que coincidan.</p>
       ) : (
-        <ul className="space-y-4">
-          {filteredNotes.map(({ arrival_id, notes }) => (
-            <li
-              key={arrival_id}
-              className="bg-white p-5 rounded-2xl border border-[#EADBC8] shadow"
-            >
-              <p className="text-[#4D4D4D] font-semibold mb-1">Mesa {arrival_id}</p>
-              <ul className="list-disc list-inside text-[#6B7280]">
-                {notes.map((note, i) => (
-                  <li key={i}>{note}</li>
-                ))}
-              </ul>
-            </li>
-          ))}
+        <ul className="space-y-6">
+          <AnimatePresence>
+            {filteredNotes.map(({ arrival_id, notes }) => (
+              <motion.li
+                key={arrival_id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-white p-6 rounded-2xl border-2 border-[#EADBC8] shadow-lg"
+              >
+                <p className="text-[#264653] font-bold mb-2 text-lg">
+                  Mesa {arrival_id}
+                </p>
+                <ul className="list-disc list-inside text-[#3BAEA0] text-base space-y-1">
+                  {notes.map((note, i) => (
+                    <li key={i} className="pl-2">{note}</li>
+                  ))}
+                </ul>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ul>
       )}
     </div>

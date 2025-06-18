@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { PlusCircle, Users } from "lucide-react";
+import { PlusCircle, Users, Trash2, LayoutTemplate } from "lucide-react";
 import axiosClient from "../../../api/axiosClient";
 import { connectWebSocket } from "../../../api/websocketClient";
 import butterup from "butteruptoasts";
+import { motion, AnimatePresence } from "framer-motion";
 import "../../../styles/butterup-2.0.0/butterup-2.0.0/butterup.css";
 
 export default function EditorMesas() {
@@ -14,6 +15,7 @@ export default function EditorMesas() {
   const [nuevoCapacidad, setNuevoCapacidad] = useState(4);
   const [nuevoEstado, setNuevoEstado] = useState("available");
   const [error, setError] = useState("");
+  const [mesaEliminarId, setMesaEliminarId] = useState(null);
 
   useEffect(() => {
     const fetchTables = async () => {
@@ -28,8 +30,7 @@ export default function EditorMesas() {
           }));
           setMesas(parsed);
         }
-      } catch (err) {
-        console.error("Error al obtener mesas:", err);
+      } catch {
         butterup.error("Error al cargar las mesas.");
       }
     };
@@ -51,9 +52,8 @@ export default function EditorMesas() {
       }
     });
 
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
+    // eslint-disable-next-line
   }, []);
 
   const iniciarArrastre = (id) => setArrastrando(id);
@@ -84,10 +84,7 @@ export default function EditorMesas() {
     );
   };
 
-  const soltarArrastre = async () => {
-    if (arrastrando === null) return;
-    setArrastrando(null);
-  };
+  const soltarArrastre = () => setArrastrando(null);
 
   const agregarMesa = async () => {
     if (!nuevoNumero.trim()) {
@@ -121,7 +118,7 @@ export default function EditorMesas() {
       setNuevoNumero("");
       setNuevoCapacidad(4);
       setNuevoEstado("available");
-    } catch (err) {
+    } catch {
       setError("Error al crear mesa.");
       butterup.error("Error al crear mesa.");
     }
@@ -133,29 +130,53 @@ export default function EditorMesas() {
       setMesas((prev) =>
         prev.map((m) => (m.id === id ? { ...m, status: nuevoEstado } : m))
       );
-    } catch (err) {
-      console.error("Error actualizando estado:", err);
+    } catch {
       butterup.error("Error actualizando el estado de la mesa.");
     }
   };
 
   const mesasPiso = mesas.filter((m) => m.piso === activo);
 
+  const handleEliminarMesa = async () => {
+    try {
+      await axiosClient.delete(`/tables/${mesaEliminarId}`);
+      setMesas((prev) => prev.filter((m) => m.id !== mesaEliminarId));
+      butterup.success("Mesa eliminada exitosamente.");
+    } catch {
+      butterup.error("Error al eliminar la mesa.");
+    } finally {
+      setMesaEliminarId(null);
+    }
+  };
+
+  // Estilos para la cuadrícula de la pizarra
+  const gridStyle = {
+    backgroundImage: `
+      linear-gradient(to right, #ece9e1 1px, transparent 1px),
+      linear-gradient(to bottom, #ece9e1 1px, transparent 1px)
+    `,
+    backgroundSize: "30px 30px",
+    backgroundPosition: "0 0, 0 0",
+  };
+
   return (
-    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-6 select-none">
-      <h1 className="text-3xl font-serif font-bold text-[#8D2E38]">Editor de Mesas</h1>
+    <div className="bg-[#FFF8F0] p-8 sm:p-12 rounded-3xl shadow-2xl border-2 border-[#EADBC8] space-y-8 max-w-6xl mx-auto font-sans min-h-[70vh]">
+      <h1 className="flex justify-center items-center gap-3 text-4xl font-extrabold text-[#3BAEA0] tracking-tight mb-2">
+        <LayoutTemplate className="w-10 h-10 text-[#264653]" />
+        Editor de Mesas
+      </h1>
 
       {/* Pisos */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap mb-2 justify-center">
         {pisos.map((p) => (
           <button
             key={p}
             onClick={() => setActivo(p)}
-            className={`px-4 py-2 rounded-full font-medium border transition ${
-              p === activo
-                ? "bg-[#264653] text-white"
-                : "bg-white text-[#264653] border-[#264653] hover:bg-[#f4f4f4]"
-            }`}
+            className={`px-6 py-2 rounded-full font-bold border-2 text-lg transition shadow
+              ${p === activo
+                ? "bg-[#264653] text-white border-transparent"
+                : "bg-white text-[#264653] border-[#264653] hover:bg-[#f4f4f4]"}
+            `}
           >
             Piso {p}
           </button>
@@ -166,15 +187,16 @@ export default function EditorMesas() {
             setPisos([...pisos, siguiente]);
             setActivo(siguiente);
           }}
-          className="flex items-center gap-1 text-sm px-3 py-1 bg-[#3BAEA0] text-white rounded-full hover:bg-[#329b91]"
+          className="flex items-center gap-2 text-sm px-4 py-2 bg-[#3BAEA0] text-white rounded-full font-bold hover:bg-[#329b91] transition shadow"
         >
-          <PlusCircle className="w-4 h-4" /> Añadir piso
+          <PlusCircle className="w-5 h-5" /> Añadir piso
         </button>
       </div>
 
-      {/* Área mesas */}
+      {/* Área mesas cuadriculada */}
       <div
-        className="relative h-[450px] bg-white rounded-xl border border-dashed border-[#EADBC8]"
+        className="relative h-[450px] bg-white rounded-2xl border-2 border-dashed border-[#EADBC8] shadow-lg"
+        style={gridStyle}
         onMouseMove={moverMesa}
         onMouseUp={soltarArrastre}
       >
@@ -189,7 +211,7 @@ export default function EditorMesas() {
               )
             }
             title="Doble click para cambiar estado"
-            className={`absolute cursor-move rounded-2xl shadow-lg p-4 w-[90px] h-[90px] flex flex-col justify-center items-center border-4 transition-colors duration-300
+            className={`absolute cursor-move rounded-2xl shadow-lg p-4 w-[90px] h-[90px] flex flex-col justify-center items-center border-4 transition-colors duration-300 group
               ${
                 mesa.status === "occupied"
                   ? "border-red-600 bg-red-100 text-red-800"
@@ -202,26 +224,35 @@ export default function EditorMesas() {
               userSelect: "none",
             }}
           >
-            <span className="font-extrabold text-3xl leading-none select-none">
-              {mesa.name}
-            </span>
-            <div className="mt-1 flex items-center gap-1 bg-white bg-opacity-70 rounded-full px-2 py-[2px]">
+            {/* Botón de eliminar solo visible al pasar mouse */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMesaEliminarId(mesa.id);
+              }}
+              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-[#E76F51] text-white rounded-full p-1 shadow hover:bg-[#b53224] z-20"
+              title="Eliminar mesa"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <span className="font-extrabold text-3xl leading-none select-none">{mesa.name}</span>
+            <div className="mt-1 flex items-center gap-1 bg-white bg-opacity-70 rounded-full px-2 py-[2px] shadow">
               <Users className="w-4 h-4 text-gray-700" />
-              <span className="text-sm font-semibold select-none">{mesa.capacity}</span>
+              <span className="text-base font-bold select-none">{mesa.capacity}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Errores */}
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-red-600 text-sm font-bold mt-2 animate-pulse">{error}</p>}
 
       {/* Formulario agregar mesa */}
-      <div className="mt-6 grid md:grid-cols-4 gap-4 items-end">
+      <div className="mt-8 grid md:grid-cols-4 gap-6 items-end">
         <div className="space-y-2">
           <label
             htmlFor="numeroMesa"
-            className="block text-[#4D4D4D] font-semibold"
+            className="block text-[#264653] font-bold text-lg"
           >
             Número de mesa
           </label>
@@ -231,14 +262,14 @@ export default function EditorMesas() {
             placeholder="Ej: 12"
             value={nuevoNumero}
             onChange={(e) => setNuevoNumero(e.target.value)}
-            className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold shadow"
           />
         </div>
 
         <div className="space-y-2">
           <label
             htmlFor="capacidadMesa"
-            className="block text-[#4D4D4D] font-semibold"
+            className="block text-[#264653] font-bold text-lg"
           >
             Capacidad
           </label>
@@ -246,7 +277,7 @@ export default function EditorMesas() {
             id="capacidadMesa"
             value={nuevoCapacidad}
             onChange={(e) => setNuevoCapacidad(Number(e.target.value))}
-            className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none"
+            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none font-semibold shadow"
           >
             {[2, 4, 6, 8].map((n) => (
               <option key={n} value={n}>
@@ -259,7 +290,7 @@ export default function EditorMesas() {
         <div className="space-y-2">
           <label
             htmlFor="estadoMesa"
-            className="block text-[#4D4D4D] font-semibold"
+            className="block text-[#264653] font-bold text-lg"
           >
             Estado
           </label>
@@ -267,7 +298,7 @@ export default function EditorMesas() {
             id="estadoMesa"
             value={nuevoEstado}
             onChange={(e) => setNuevoEstado(e.target.value)}
-            className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none"
+            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none font-semibold shadow"
           >
             <option value="available">Disponible</option>
             <option value="occupied">Ocupada</option>
@@ -276,17 +307,53 @@ export default function EditorMesas() {
 
         <button
           onClick={agregarMesa}
-          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-6 py-2 rounded-full font-medium hover:bg-[#2f9b90] transition justify-center"
+          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-8 py-3 rounded-full font-bold hover:bg-[#2f9b90] transition justify-center shadow"
         >
           <PlusCircle className="w-5 h-5" />
           Añadir mesa
         </button>
       </div>
 
-      <p className="text-sm text-[#4D4D4D] mt-6 italic">
-        🛠️ Doble click en una mesa para cambiar su estado entre disponible y
-        ocupada. Arrastra para mover mesas.
+      <p className="text-base text-[#264653] mt-8 italic text-center">
+        🛠️ Doble click en una mesa para cambiar su estado entre disponible y ocupada. Arrastra para mover mesas.
       </p>
+
+      {/* Modal gourmet eliminar mesa */}
+      <AnimatePresence>
+        {mesaEliminarId && (
+          <motion.div
+            className="fixed inset-0 z-50 flex justify-center items-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(0,0,0,0)" }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="bg-white border-2 border-[#E76F51] rounded-3xl shadow-2xl p-8 w-96 text-center"
+            >
+              <h2 className="text-2xl font-bold text-[#E76F51] mb-4">¿Eliminar mesa?</h2>
+              <p className="text-[#264653] mb-6">Esta acción eliminará la mesa seleccionada.</p>
+              <div className="flex gap-4 mt-2">
+                <button
+                  onClick={() => setMesaEliminarId(null)}
+                  className="flex-1 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-[#264653] font-bold shadow transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEliminarMesa}
+                  className="flex-1 py-2 rounded-full bg-[#E76F51] hover:bg-[#b53224] text-white font-bold shadow transition"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

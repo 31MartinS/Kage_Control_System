@@ -40,7 +40,7 @@ def get_orders_for_tracking(db: Session = Depends(database.get_db)):
             "id": o.id,
             "table": o.arrival.table.name if o.arrival and o.arrival.table else None,
             "items": [f"{od.quantity}x {od.dish.name}" for od in o.dishes],
-            "status": list(OrderStatus).index(o.status),
+            "status": o.status.value,
             "time": o.arrival.assigned_at.strftime("%H:%M") if o.arrival else "??:??",
         }
         for o in orders

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FileDown, CalendarRange, SlidersHorizontal } from "lucide-react";
+import { FileDown, SlidersHorizontal } from "lucide-react";
 import axios from "axios";
+import butterup from "butteruptoasts";
 
 const SECCIONES_DISPONIBLES = [
   { id: "reservas", label: "Reservas" },
@@ -13,6 +14,7 @@ export default function Informes() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [seleccionadas, setSeleccionadas] = useState(["reservas"]);
+  const [descargando, setDescargando] = useState(false);
 
   const toggleSeleccion = (id) => {
     setSeleccionadas((prev) =>
@@ -32,10 +34,10 @@ export default function Informes() {
 
   const descargarPDF = async () => {
     if (!desde || !hasta || seleccionadas.length === 0) {
-      alert("Selecciona fechas válidas y al menos una sección.");
+      butterup.error("Selecciona fechas válidas y al menos una sección.");
       return;
     }
-
+    setDescargando(true);
     try {
       const params = new URLSearchParams();
       params.append("start", desde);
@@ -43,9 +45,7 @@ export default function Informes() {
       seleccionadas.forEach((seccion) => params.append("sections", seccion));
       const url = `http://localhost:8000/reports/pdf?${params.toString()}`;
 
-      const res = await axios.get(url, {
-        responseType: "blob",
-      });
+      const res = await axios.get(url, { responseType: "blob" });
 
       const file = new Blob([res.data], { type: "application/pdf" });
       const link = document.createElement("a");
@@ -54,38 +54,40 @@ export default function Informes() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      butterup.success("Descarga completada 📥");
     } catch (err) {
-      console.error("Error descargando informe:", err);
-      alert("Ocurrió un error al generar el informe.");
+      butterup.error("Ocurrió un error al generar el informe.");
+    } finally {
+      setDescargando(false);
     }
   };
 
   return (
-    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-8">
-      <h1 className="text-3xl font-serif font-bold text-[#8D2E38]">
+    <div className="bg-[#FFF8F0] p-8 sm:p-12 rounded-3xl shadow-2xl border-2 border-[#EADBC8] max-w-3xl mx-auto space-y-10 font-sans min-h-[70vh]">
+      <h1 className="text-4xl font-extrabold text-center text-[#3BAEA0] tracking-tight mb-6 flex items-center justify-center gap-3">
+        <FileDown className="w-8 h-8" />
         Generar Informe en PDF
       </h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-8">
         {/* Tipo de sección */}
         <div className="md:col-span-1">
-          <label className="block mb-2 font-semibold text-[#4D4D4D]">
-            Secciones a incluir
-          </label>
-          <div className="space-y-2 bg-white rounded-xl border border-[#EADBC8] p-4">
+          <label className="block mb-2 font-bold text-[#264653] text-lg">Secciones a incluir</label>
+          <div className="space-y-3 bg-white rounded-2xl border-2 border-[#EADBC8] p-5">
             {SECCIONES_DISPONIBLES.map((s) => (
-              <label key={s.id} className="flex items-center gap-2">
+              <label key={s.id} className="flex items-center gap-2 text-[#3BAEA0] font-medium cursor-pointer">
                 <input
                   type="checkbox"
                   checked={seleccionadas.includes(s.id)}
                   onChange={() => toggleSeleccion(s.id)}
+                  className="accent-[#3BAEA0] w-4 h-4 rounded focus:ring-2 focus:ring-[#3BAEA0] transition"
                 />
                 {s.label}
               </label>
             ))}
             <button
               onClick={seleccionarTodo}
-              className="text-sm text-blue-600 underline mt-2"
+              className="block w-full mt-2 text-sm text-blue-600 underline font-semibold hover:text-blue-900 transition"
             >
               {seleccionadas.length === SECCIONES_DISPONIBLES.length
                 ? "Deseleccionar todo"
@@ -95,43 +97,48 @@ export default function Informes() {
         </div>
 
         {/* Fecha Desde */}
-        <div>
-          <label className="block mb-1 text-[#4D4D4D] font-medium">Desde</label>
+        <div className="flex flex-col gap-2">
+          <label className="block text-[#264653] font-bold text-lg">Desde</label>
           <input
             type="datetime-local"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+            className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white font-semibold text-[#264653] focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] shadow"
           />
         </div>
 
         {/* Fecha Hasta */}
-        <div>
-          <label className="block mb-1 text-[#4D4D4D] font-medium">Hasta</label>
+        <div className="flex flex-col gap-2">
+          <label className="block text-[#264653] font-bold text-lg">Hasta</label>
           <input
             type="datetime-local"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="w-full px-4 py-2 border border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+            className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white font-semibold text-[#264653] focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] shadow"
           />
         </div>
       </div>
 
       {/* Botones */}
-      <div className="flex flex-col sm:flex-row justify-end gap-4">
+      <div className="flex flex-col sm:flex-row justify-end gap-4 pt-2">
         <button
-          onClick={() => alert("Vista previa no implementada aún")}
-          className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#264653] text-white font-medium hover:bg-[#1b3540] transition"
+          onClick={() => butterup.info("Vista previa no implementada aún")}
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#264653] text-white font-bold hover:bg-[#1b3540] shadow transition"
         >
-          <SlidersHorizontal className="w-4 h-4" />
+          <SlidersHorizontal className="w-5 h-5" />
           Vista previa
         </button>
         <button
           onClick={descargarPDF}
-          className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#3BAEA0] text-white font-medium hover:bg-[#329b91] transition"
+          disabled={descargando}
+          className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-white shadow transition
+            ${descargando
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-[#3BAEA0] hover:bg-[#329b91]"
+            }`}
         >
-          <FileDown className="w-4 h-4" />
-          Descargar PDF
+          <FileDown className="w-5 h-5" />
+          {descargando ? "Descargando..." : "Descargar PDF"}
         </button>
       </div>
     </div>

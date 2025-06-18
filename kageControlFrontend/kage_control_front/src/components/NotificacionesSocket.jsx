@@ -33,7 +33,7 @@ export default function NotificacionesSocket() {
 
       socket.onclose = (e) => {
         console.warn("🔴 WS cerrado, reconectando en 3s...", e.code, e.reason);
-        setTimeout(connect, 3000);
+        setTimeout(connect, 1000);
       };
     };
 

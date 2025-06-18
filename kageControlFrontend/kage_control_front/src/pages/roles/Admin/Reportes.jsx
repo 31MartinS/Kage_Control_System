@@ -5,12 +5,9 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  Users,
-  Clock,
   UtensilsCrossed,
-  PieChart,
   CalendarDays,
-  ListTree
+  ListTree,
 } from "lucide-react";
 import {
   BarChart,
@@ -33,7 +30,6 @@ export default function Reportes() {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState({
     reservas: true,
-    meseros: false,
     ordenes: false,
     comensales: false,
   });
@@ -68,11 +64,11 @@ export default function Reportes() {
 
   const COLORS = ["#3BAEA0", "#E76F51", "#F4A261", "#264653", "#A8DADC"];
 
-  const { reservas, meseros, ordenes, comensales } = data;
+  const { reservas, ordenes, comensales } = data;
 
   return (
-    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-xl border border-[#EADBC8] space-y-8">
-      <h1 className="text-3xl font-serif font-bold text-[#8D2E38] flex items-center gap-3">
+    <div className="bg-[#FFF8F0] p-8 rounded-3xl shadow-2xl border-2 border-[#EADBC8] space-y-8 max-w-6xl mx-auto">
+      <h1 className="text-4xl font-extrabold flex items-center gap-3 text-center text-[#3BAEA0] tracking-tight mb-2 font-sans">
         <BarChart3 className="w-7 h-7" /> Estadísticas del Sistema
       </h1>
 
@@ -87,7 +83,6 @@ export default function Reportes() {
           Duración promedio de estancia:{" "}
           <span className="font-bold">{reservas.duracion_promedio.toFixed(1)} min</span>
         </p>
-
         <h3 className="text-sm text-[#264653] font-semibold mt-4">Reservas por Día</h3>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={Object.entries(reservas.por_dia).map(([k, v]) => ({ fecha: k, total: v }))}>
@@ -98,7 +93,6 @@ export default function Reportes() {
             <Bar dataKey="total" fill="#3BAEA0" />
           </BarChart>
         </ResponsiveContainer>
-
         <h3 className="text-sm text-[#264653] font-semibold mt-4">Reservas por Estado</h3>
         <ResponsiveContainer width="100%" height={250}>
           <RePieChart>
@@ -120,26 +114,7 @@ export default function Reportes() {
         </ResponsiveContainer>
       </Section>
 
-      {/* Meseros */}
-      <Section
-        title="Rendimiento del Personal"
-        icon={<Users />}
-        expanded={expanded.meseros}
-        onToggle={() => toggle("meseros")}
-      >
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={meseros}>
-            <XAxis dataKey="nombre" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="ordenes" fill="#3BAEA0" name="Órdenes" />
-            <Bar dataKey="ventas" fill="#E76F51" name="Ventas $" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Section>
-
-      {/* Consumo */}
+      {/* Órdenes y Consumo */}
       <Section
         title="Órdenes y Consumo"
         icon={<UtensilsCrossed />}
@@ -186,7 +161,7 @@ export default function Reportes() {
       <div className="flex justify-end">
         <button
           onClick={cargarDatos}
-          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-6 py-2 rounded-full font-medium hover:bg-[#2d9c92] transition"
+          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-6 py-2 rounded-full font-bold hover:bg-[#2d9c92] shadow transition"
         >
           <RefreshCw className="w-5 h-5" /> Actualizar estadísticas
         </button>
@@ -197,10 +172,10 @@ export default function Reportes() {
 
 function Section({ title, icon, expanded, children, onToggle }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#EADBC8] shadow-md">
+    <div className="bg-white rounded-2xl border-2 border-[#EADBC8] shadow-md">
       <button
         onClick={onToggle}
-        className="w-full px-6 py-4 flex justify-between items-center text-left font-semibold text-[#264653] text-xl"
+        className="w-full px-6 py-4 flex justify-between items-center text-left font-bold text-[#264653] text-xl font-sans"
       >
         <div className="flex items-center gap-3">
           {icon}

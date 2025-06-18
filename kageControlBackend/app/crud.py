@@ -46,7 +46,7 @@ def create_order(db: Session, data: schemas.OrderCreate):
         arrival_id=data.arrival_id,
         station=data.station,
         notes=data.notes,
-        status=models.OrderStatus.sent
+        status=models.OrderStatus.pending
     )
     db.add(order)
     db.commit()
