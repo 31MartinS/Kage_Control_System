@@ -34,15 +34,26 @@ export default function Usuarios() {
     email: false,
     phone: false,
     password: false,
+    hire_date: false,
   });
 
   function validarUsuario(f) {
+    const hoy = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const minFecha = "2000-01-01";
+
     return {
       username: (!/^[\w.-]{3,20}$/.test(f.username)) ? "3-20 letras/números/._-" : "",
       full_name: (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,40}$/.test(f.full_name.trim())) ? "Solo letras, min. 3" : "",
       email: (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(f.email)) ? "Correo inválido" : "",
       phone: (!!f.phone && !/^[0-9+() -]{7,20}$/.test(f.phone)) ? "Teléfono inválido" : "",
       password: (!editando && (!f.password || f.password.length < 6)) ? "Mín. 6 caracteres" : "",
+      hire_date: (!f.hire_date)
+        ? "Fecha requerida"
+        : (f.hire_date > hoy)
+          ? "No puede ser futura"
+          : (f.hire_date < minFecha)
+            ? `No anterior a ${minFecha}`
+            : "",
     };
   }
 
@@ -156,6 +167,7 @@ export default function Usuarios() {
       email: true,
       phone: true,
       password: true,
+      hire_date: true, 
     });
   };
 
@@ -377,7 +389,19 @@ export default function Usuarios() {
                   <option value="cocina">Cocina</option>
                   <option value="admin">Admin</option>
                 </select>
-                
+                <div>
+                <input
+                  type="date"
+                  name="hire_date"
+                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  value={formUsuario.hire_date}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                {errores.hire_date && touched.hire_date && (
+                  <p className="text-[#E76F51] text-xs mt-1">{errores.hire_date}</p>
+                )}
+                </div>
                 {!editando && (
                   <div className="col-span-2">
                     <input

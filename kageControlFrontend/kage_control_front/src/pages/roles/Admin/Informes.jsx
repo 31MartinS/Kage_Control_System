@@ -16,11 +16,15 @@ export default function Informes() {
   const [seleccionadas, setSeleccionadas] = useState(["reservas"]);
   const [descargando, setDescargando] = useState(false);
 
+  const [errores, setErrores] = useState({
+    desde: "",
+    hasta: "",
+    secciones: "",
+  });
+
   const toggleSeleccion = (id) => {
     setSeleccionadas((prev) =>
-      prev.includes(id)
-        ? prev.filter((s) => s !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
   };
 
@@ -32,19 +36,45 @@ export default function Informes() {
     }
   };
 
-  const descargarPDF = async () => {
-    if (!desde || !hasta || seleccionadas.length === 0) {
-      butterup.error("Selecciona fechas válidas y al menos una sección.");
-      return;
+  const validarFormulario = () => {
+    const ahora = new Date().toISOString();
+    const nuevosErrores = {
+      desde: "",
+      hasta: "",
+      secciones: "",
+    };
+
+    if (!desde) nuevosErrores.desde = "Fecha inicial requerida";
+    if (!hasta) nuevosErrores.hasta = "Fecha final requerida";
+
+    if (desde && hasta && desde > hasta) {
+      nuevosErrores.desde = "No debe ser mayor a la fecha final";
+      nuevosErrores.hasta = "No debe ser menor a la fecha inicial";
     }
+
+    if (hasta && hasta > ahora) {
+      nuevosErrores.hasta = "No puede ser una fecha futura";
+    }
+
+    if (seleccionadas.length === 0) {
+      nuevosErrores.secciones = "Selecciona al menos una sección";
+    }
+
+    setErrores(nuevosErrores);
+    return Object.values(nuevosErrores).every((e) => !e);
+  };
+
+  const descargarPDF = async () => {
+    if (!validarFormulario()) return;
+
     setDescargando(true);
     try {
       const params = new URLSearchParams();
       params.append("start", desde);
       params.append("end", hasta);
       seleccionadas.forEach((seccion) => params.append("sections", seccion));
-      const url = `http://localhost:8000/reports/pdf?${params.toString()}`;
 
+      const url = `http://localhost:8000/reports/pdf?${params.toString()}`;
       const res = await axios.get(url, { responseType: "blob" });
 
       const file = new Blob([res.data], { type: "application/pdf" });
@@ -54,11 +84,33 @@ export default function Informes() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+
       butterup.success("Descarga completada 📥");
     } catch (err) {
       butterup.error("Ocurrió un error al generar el informe.");
     } finally {
       setDescargando(false);
+    }
+  };
+
+  const mostrarVistaPrevia = async () => {
+    if (!validarFormulario()) return;
+
+    try {
+      const params = new URLSearchParams();
+      params.append("start", desde);
+      params.append("end", hasta);
+      seleccionadas.forEach((seccion) => params.append("sections", seccion));
+
+      const url = `http://localhost:8000/reports/pdf?${params.toString()}`;
+      const res = await axios.get(url, { responseType: "blob" });
+
+      const file = new Blob([res.data], { type: "application/pdf" });
+      const fileURL = URL.createObjectURL(file);
+
+      window.open(fileURL, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      butterup.error("No se pudo generar la vista previa del informe.");
     }
   };
 
@@ -93,6 +145,9 @@ export default function Informes() {
                 ? "Deseleccionar todo"
                 : "Seleccionar todo"}
             </button>
+            {errores.secciones && (
+              <p className="text-[#E76F51] text-sm mt-1">{errores.secciones}</p>
+            )}
           </div>
         </div>
 
@@ -103,8 +158,10 @@ export default function Informes() {
             type="datetime-local"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
+            max={hasta || undefined}
             className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white font-semibold text-[#264653] focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] shadow"
           />
+          {errores.desde && <p className="text-[#E76F51] text-sm mt-1">{errores.desde}</p>}
         </div>
 
         {/* Fecha Hasta */}
@@ -114,15 +171,17 @@ export default function Informes() {
             type="datetime-local"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
+            max={new Date().toISOString().slice(0, 16)}
             className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white font-semibold text-[#264653] focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] shadow"
           />
+          {errores.hasta && <p className="text-[#E76F51] text-sm mt-1">{errores.hasta}</p>}
         </div>
       </div>
 
       {/* Botones */}
       <div className="flex flex-col sm:flex-row justify-end gap-4 pt-2">
         <button
-          onClick={() => butterup.info("Vista previa no implementada aún")}
+          onClick={mostrarVistaPrevia}
           className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#264653] text-white font-bold hover:bg-[#1b3540] shadow transition"
         >
           <SlidersHorizontal className="w-5 h-5" />
