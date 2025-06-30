@@ -81,7 +81,7 @@ export default function Usuarios() {
       email: "",
       phone: "",
       role: "mesero",
-      hire_date: "",
+      hire_date: new Date().toISOString().split("T")[0],
       password: "",
       estado: "activo",
     });
@@ -377,13 +377,7 @@ export default function Usuarios() {
                   <option value="cocina">Cocina</option>
                   <option value="admin">Admin</option>
                 </select>
-                <input
-                  type="date"
-                  name="hire_date"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.hire_date}
-                  onChange={handleChange}
-                />
+                
                 {!editando && (
                   <div className="col-span-2">
                     <input

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import NotificacionesSocket from "./NotificacionesSocket";
 import {
   ConciergeBell,
   UtensilsCrossed,
@@ -99,8 +98,7 @@ export default function Sidebar() {
             </p>
           )}
         </div>
-        {/* Notificaciones */}
-        {expanded && <div className="px-2 w-full mb-3"><NotificacionesSocket /></div>}
+        
 
         {/* Opciones dinámicas */}
         <nav className="flex-1 flex flex-col gap-1 mt-1">
