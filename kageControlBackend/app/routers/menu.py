@@ -1,19 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from .. import schemas, crud, database
+from app.core.database import get_db
+from app.services import dish_service
+from app.schemas import DishCreate, Dish
+from typing import List
 
 router = APIRouter(prefix="/menu", tags=["menu"])
 
-@router.get("/available", response_model=list[schemas.Dish])
-def list_available_dishes(db: Session = Depends(database.get_db)):
-    """
-    Devuelve la lista de platillos que tienen suficientes ingredientes en stock para ser vendidos.
-    """
-    return crud.get_available_dishes(db)
+@router.get("/available", response_model=List[Dish])
+def list_available_dishes(db: Session = Depends(get_db)):
+    return dish_service.get_available_dishes(db)
 
-@router.post("/", response_model=schemas.Dish)
-def create_dish(dish: schemas.DishCreate, db: Session = Depends(database.get_db)):
-    """
-    Crea un nuevo platillo con sus ingredientes y cantidades necesarias.
-    """
-    return crud.create_dish(db, dish)
+@router.post("/", response_model=Dish)
+def create_dish(dish: DishCreate, db: Session = Depends(get_db)):
+    return dish_service.create_dish(db, dish)

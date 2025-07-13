@@ -1,10 +1,8 @@
-# app/notificaciones/event_listeners.py
 from .event_bus import event_bus
-from app.websocket import manager
+from .manager import manager
 
 async def on_order_created(data: dict):
     print(f"🆕 Nueva orden creada (ID: {data['order_id']}) para llegada {data['arrival_id']}.")
-    # Enviamos WS a todos los conectados
     await manager.broadcast({
         "event": "order_created",
         "order_id": data["order_id"],

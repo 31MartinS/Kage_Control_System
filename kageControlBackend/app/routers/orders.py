@@ -1,40 +1,28 @@
-# app/routers/orders.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import asyncio
-
-from ..models import OrderStatus
-from .. import crud, schemas, database
-from ..notificaciones.event_bus import event_bus
+from app.core.database import get_db
+from app.schemas import Order, OrderCreate, OrderStatus
+from app.services import order_service
+from app.websocket.event_bus import event_bus
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-@router.post("/", response_model=schemas.Order)
-async def create_order(
-    data: schemas.OrderCreate,
-    db: Session = Depends(database.get_db)
-):
-    """
-    Crea la orden y lanza el evento en el mismo loop con create_task.
-    """
+@router.post("/", response_model=Order)
+async def create_order(data: OrderCreate, db: Session = Depends(get_db)):
     try:
-        order = crud.create_order(db, data)
-        # Scheduleamos la emisión del evento en background dentro del loop
-        asyncio.create_task(
-            event_bus.emit(
-                "order_created",
-                {"order_id": order.id, "arrival_id": order.arrival_id}
-            )
-        )
+        order = order_service.create_order(db, data)
+        asyncio.create_task(event_bus.emit("order_created", {
+            "order_id": order.id,
+            "arrival_id": order.arrival_id
+        }))
         return order
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.get("/tracking", response_model=list[dict])
-def get_orders_for_tracking(db: Session = Depends(database.get_db)):
-    orders = crud.get_all_orders(db)
+def get_orders_for_tracking(db: Session = Depends(get_db)):
+    orders = order_service.get_all_orders(db)
     return [
         {
             "id": o.id,
@@ -46,34 +34,21 @@ def get_orders_for_tracking(db: Session = Depends(database.get_db)):
         for o in orders
     ]
 
+@router.get("/{arrival_id}", response_model=list[Order])
+def list_orders(arrival_id: int, db: Session = Depends(get_db)):
+    return order_service.get_orders_by_arrival(db, arrival_id)
 
-@router.get("/{arrival_id}", response_model=list[schemas.Order])
-def list_orders(arrival_id: int, db: Session = Depends(database.get_db)):
-    return crud.get_orders_by_arrival(db, arrival_id)
+@router.get("/", response_model=list[Order])
+def list_all_orders(db: Session = Depends(get_db)):
+    return order_service.get_all_orders(db)
 
-
-@router.get("/", response_model=list[schemas.Order])
-def list_all_orders(db: Session = Depends(database.get_db)):
-    return crud.get_all_orders(db)
-
-
-@router.patch("/{order_id}/status", response_model=schemas.Order)
-async def change_order_status(
-    order_id: int,
-    status: OrderStatus,
-    db: Session = Depends(database.get_db)
-):
-    """
-    Actualiza estado y schedulea el evento.
-    """
-    order = crud.update_order_status(db, order_id, status)
+@router.patch("/{order_id}/status", response_model=Order)
+async def change_order_status(order_id: int, status: OrderStatus, db: Session = Depends(get_db)):
+    order = order_service.update_order_status(db, order_id, status)
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    asyncio.create_task(
-        event_bus.emit(
-            "order_status_changed",
-            {"order_id": order.id, "status": status.value}
-        )
-    )
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    asyncio.create_task(event_bus.emit("order_status_changed", {
+        "order_id": order.id,
+        "status": status.value
+    }))
     return order

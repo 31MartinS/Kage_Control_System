@@ -1,5 +1,5 @@
-# app/notificaciones/event_bus.py
-import asyncio, inspect
+import asyncio
+import inspect
 from typing import Callable, Dict, List
 
 class EventBus:
@@ -12,13 +12,8 @@ class EventBus:
         self._subscribers[event_name].append(callback)
 
     async def emit(self, event_name: str, data: dict):
-        """
-        Lanza los callbacks. Si es coroutine, lo schedulea;
-        si no, lo invoca directamente.
-        """
         for callback in self._subscribers.get(event_name, []):
             if inspect.iscoroutinefunction(callback):
-                # crea la tarea en el loop actual
                 asyncio.create_task(callback(data))
             else:
                 callback(data)

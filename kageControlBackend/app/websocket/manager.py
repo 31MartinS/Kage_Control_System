@@ -1,5 +1,3 @@
-# app/websocket.py
-
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import List
 
@@ -12,18 +10,18 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         living: List[WebSocket] = []
-        for ws in self.active_connections:           # ← usar active_connections
+        for ws in self.active_connections:
             try:
                 await ws.send_json(message)
                 living.append(ws)
             except WebSocketDisconnect:
-                # Se desconectó en medio de un envío
                 pass
-        # Actualiza la lista manteniendo sólo los aún conectados
-        self.active_connections = living             # ← actualizar active_connections
+        self.active_connections = living
 
+# Instancia global
 manager = ConnectionManager()
