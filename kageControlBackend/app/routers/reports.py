@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from app.core.database import get_db
 from app.services import report_service
-from app.utils.pdf_generator import generate_pdf_report
+from app.utils.pdf_generator_improved import generate_pdf_report
 from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/reports", tags=["reports"])

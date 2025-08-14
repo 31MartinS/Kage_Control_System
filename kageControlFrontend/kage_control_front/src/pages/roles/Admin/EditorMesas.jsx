@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { PlusCircle, Users, Trash2, LayoutTemplate } from "lucide-react";
 import axiosClient from "../../../api/axiosClient";
 import { connectWebSocket } from "../../../api/websocketClient";
@@ -13,48 +13,126 @@ export default function EditorMesas() {
   const [arrastrando, setArrastrando] = useState(null);
   const [nuevoNumero, setNuevoNumero] = useState("");
   const [nuevoCapacidad, setNuevoCapacidad] = useState(4);
-  const [nuevoEstado, setNuevoEstado] = useState("available");
+  const [nuevoEstado, setNuevoEstado] = useState("free");
   const [error, setError] = useState("");
   const [mesaEliminarId, setMesaEliminarId] = useState(null);
+  const [mesaEditando, setMesaEditando] = useState(null);
+  const [editCapacidad, setEditCapacidad] = useState(4);
+  const [editEstado, setEditEstado] = useState("free");
+  const [mostrarModalAgregar, setMostrarModalAgregar] = useState(false);
 
   useEffect(() => {
     const fetchTables = async () => {
       try {
         const res = await axiosClient.get("/tables");
         if (Array.isArray(res.data)) {
-          const parsed = res.data.map((m) => ({
-            ...m,
-            piso: 1,
-            x: m.x ?? Math.random() * 300 + 50,
-            y: m.y ?? Math.random() * 300 + 50,
-          }));
-          setMesas(parsed);
+          // Ordenar mesas en grilla solo si no tienen x/y
+          let mesasOrdenadas = [...res.data];
+          const mesasSinPos = mesasOrdenadas.filter(m => m.x == null || m.y == null);
+          if (mesasSinPos.length > 0) {
+            // Parámetros de la grilla
+            const gridCols = 5;
+            const cellW = 120;
+            const cellH = 120;
+            const startX = 60;
+            const startY = 60;
+            mesasOrdenadas = mesasOrdenadas.map((m, idx) => {
+              if (m.x == null || m.y == null) {
+                // Solo asignar a los que no tienen posición
+                const pos = mesasSinPos.indexOf(m);
+                const col = pos % gridCols;
+                const row = Math.floor(pos / gridCols);
+                return {
+                  ...m,
+                  piso: 1,
+                  x: startX + col * cellW,
+                  y: startY + row * cellH,
+                };
+              } else {
+                return {
+                  ...m,
+                  piso: 1,
+                };
+              }
+            });
+          } else {
+            mesasOrdenadas = mesasOrdenadas.map(m => ({ ...m, piso: 1 }));
+          }
+          setMesas(mesasOrdenadas);
         }
       } catch {
-        butterup.error("Error al cargar las mesas.");
+        butterup.toast({
+          title: "Error",
+          message: "Error al cargar las mesas.",
+          type: "error",
+          location: "top-right",
+          dismissable: true
+        });
       }
     };
 
     fetchTables();
-
+    
     const ws = connectWebSocket("/ws/tables", (data) => {
-      if (data.event === "update_tables" && Array.isArray(data.tables)) {
-        const actualizadas = data.tables.map((m) => {
-          const local = mesas.find((t) => t.id === m.id);
-          return {
-            ...m,
-            piso: local?.piso ?? 1,
-            x: local?.x ?? 100,
-            y: local?.y ?? 100,
-          };
+      console.log("WebSocket evento recibido:", data.event);
+      
+      if (data.event === "table_deleted" && data.table_id) {
+        console.log("Mesa eliminada via WebSocket:", data.table_id);
+        setMesas(mesasActuales => {
+          const nuevasMesas = mesasActuales.filter(m => m.id !== data.table_id);
+          console.log("Mesas después de eliminar:", nuevasMesas.length);
+          return nuevasMesas;
         });
-        setMesas(actualizadas);
+      }
+      
+      if (data.event === "update_tables" && Array.isArray(data.tables)) {
+        console.log("WebSocket recibió actualización:", data.tables.length, "mesas");
+        setMesas(mesasActuales => {
+          console.log("Estado actual:", mesasActuales.length, "mesas");
+          
+          // Crear un mapa de las mesas actuales por ID para búsqueda rápida
+          const mesasActualesMap = new Map(mesasActuales.map(m => [m.id, m]));
+          
+          const actualizadas = data.tables.map((mesaActualizada) => {
+            const mesaLocal = mesasActualesMap.get(mesaActualizada.id);
+            if (mesaLocal) {
+              // Mesa existente: preservar coordenadas
+              return {
+                ...mesaActualizada,
+                piso: mesaLocal.piso,
+                x: mesaLocal.x,
+                y: mesaLocal.y,
+              };
+            } else {
+              // Mesa nueva: asignar posición ordenada
+              console.log("Nueva mesa detectada:", mesaActualizada.name);
+              const mesasEnPiso = mesasActuales.filter(m => m.piso === 1);
+              const gridCols = 5;
+              const cellW = 120;
+              const cellH = 120;
+              const startX = 60;
+              const startY = 60;
+              const pos = mesasEnPiso.length;
+              const col = pos % gridCols;
+              const row = Math.floor(pos / gridCols);
+              
+              return {
+                ...mesaActualizada,
+                piso: 1,
+                x: startX + col * cellW,
+                y: startY + row * cellH,
+              };
+            }
+          });
+          
+          console.log("Actualizando a:", actualizadas.length, "mesas");
+          return actualizadas;
+        });
       }
     });
 
     return () => ws.close();
-    // eslint-disable-next-line
-  }, []);
+  }, []); // Sin dependencias para evitar reconexiones
 
   const iniciarArrastre = (id) => setArrastrando(id);
 
@@ -68,7 +146,7 @@ export default function EditorMesas() {
       (m) =>
         m.id !== arrastrando &&
         m.piso === activo &&
-        Math.hypot(m.x - nuevaX, m.y - nuevaY) < 100
+        Math.hypot(m.x - nuevaX, m.y - nuevaY) < 50
     );
 
     if (colision) {
@@ -89,38 +167,57 @@ export default function EditorMesas() {
   const agregarMesa = async () => {
     if (!nuevoNumero.trim()) {
       setError("El número de mesa es obligatorio.");
-      butterup.error("El número de mesa es obligatorio.");
+      butterup.toast({
+        title: "Error",
+        message: "El número de mesa es obligatorio.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
       return;
     }
+    
+    // Validar que sea un número válido
+    if (isNaN(nuevoNumero) || Number(nuevoNumero) <= 0) {
+      setError("Ingrese un número de mesa válido.");
+      butterup.toast({
+        title: "Error",
+        message: "Ingrese un número de mesa válido.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
+      return;
+    }
+    
     setError("");
     try {
       const res = await axiosClient.post("/tables", {
-        name: nuevoNumero,
+        name: `Mesa ${nuevoNumero}`,
         capacity: nuevoCapacidad,
         status: nuevoEstado,
-        x: Math.random() * 400 + 30,
-        y: Math.random() * 300 + 30,
       });
 
       if (res.data) {
-        setMesas((prev) => [
-          ...prev,
-          {
-            ...res.data,
-            piso: activo,
-            x: res.data.x ?? Math.random() * 400 + 30,
-            y: res.data.y ?? Math.random() * 300 + 30,
-          },
-        ]);
-        butterup.success("Mesa creada exitosamente.");
+        butterup.toast({
+          title: "Éxito",
+          message: "Mesa creada exitosamente.",
+          type: "success",
+          location: "top-right",
+          dismissable: true
+        });
+        cerrarModalAgregar();
+        // No actualizar estado local aquí, dejar que el WebSocket lo haga
       }
-
-      setNuevoNumero("");
-      setNuevoCapacidad(4);
-      setNuevoEstado("available");
     } catch {
       setError("Error al crear mesa.");
-      butterup.error("Error al crear mesa.");
+      butterup.toast({
+        title: "Error",
+        message: "Error al crear mesa.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
     }
   };
 
@@ -131,7 +228,13 @@ export default function EditorMesas() {
         prev.map((m) => (m.id === id ? { ...m, status: nuevoEstado } : m))
       );
     } catch {
-      butterup.error("Error actualizando el estado de la mesa.");
+      butterup.toast({
+        title: "Error",
+        message: "Error actualizando el estado de la mesa.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
     }
   };
 
@@ -140,12 +243,96 @@ export default function EditorMesas() {
   const handleEliminarMesa = async () => {
     try {
       await axiosClient.delete(`/tables/${mesaEliminarId}`);
-      setMesas((prev) => prev.filter((m) => m.id !== mesaEliminarId));
-      butterup.success("Mesa eliminada exitosamente.");
+      butterup.toast({
+        title: "Éxito",
+        message: "Mesa eliminada exitosamente.",
+        type: "success",
+        location: "top-right",
+        dismissable: true
+      });
+      // Confiar en el WebSocket para la actualización
     } catch {
-      butterup.error("Error al eliminar la mesa.");
+      butterup.toast({
+        title: "Error",
+        message: "Error al eliminar la mesa.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
     } finally {
       setMesaEliminarId(null);
+    }
+  };
+
+  const abrirEdicionMesa = (mesa) => {
+    setMesaEditando(mesa);
+    setEditCapacidad(mesa.capacity);
+    setEditEstado(mesa.status);
+  };
+
+  const cerrarEdicionMesa = () => {
+    setMesaEditando(null);
+    setEditCapacidad(4);
+    setEditEstado("free");
+  };
+
+  const abrirModalAgregar = () => {
+    setMostrarModalAgregar(true);
+    setNuevoNumero("");
+    setNuevoCapacidad(4);
+    setNuevoEstado("free");
+    setError("");
+  };
+
+  const cerrarModalAgregar = () => {
+    setMostrarModalAgregar(false);
+    setNuevoNumero("");
+    setNuevoCapacidad(4);
+    setNuevoEstado("free");
+    setError("");
+  };
+
+  const guardarEdicionMesa = async () => {
+    try {
+      // Actualizar estado local inmediatamente para evitar parpadeos
+      setMesas((prev) =>
+        prev.map((m) =>
+          m.id === mesaEditando.id
+            ? { ...m, capacity: editCapacidad, status: editEstado }
+            : m
+        )
+      );
+      
+      await axiosClient.put(`/tables/${mesaEditando.id}`, {
+        capacity: editCapacidad,
+        status: editEstado,
+      });
+      
+      butterup.toast({
+        title: "Éxito",
+        message: "Mesa actualizada exitosamente.",
+        type: "success",
+        location: "top-right",
+        dismissable: true
+      });
+      cerrarEdicionMesa();
+    } catch {
+      // Si falla, revertir el cambio local
+      setMesas((prev) =>
+        prev.map((m) =>
+          m.id === mesaEditando.id
+            ? { ...m, capacity: mesaEditando.capacity, status: mesaEditando.status }
+            : m
+        )
+      );
+      
+      butterup.toast({
+        title: "Error",
+        message: "Error al actualizar la mesa.",
+        type: "error",
+        location: "top-right",
+        dismissable: true
+      });
     }
   };
 
@@ -204,17 +391,16 @@ export default function EditorMesas() {
           <div
             key={mesa.id}
             onMouseDown={() => iniciarArrastre(mesa.id)}
-            onDoubleClick={() =>
-              cambiarEstado(
-                mesa.id,
-                mesa.status === "available" ? "occupied" : "available"
-              )
-            }
-            title="Doble click para cambiar estado"
+            onDoubleClick={() => abrirEdicionMesa(mesa)}
+            title="Doble click para editar mesa"
             className={`absolute cursor-move rounded-2xl shadow-lg p-4 w-[90px] h-[90px] flex flex-col justify-center items-center border-4 transition-colors duration-300 group
               ${
                 mesa.status === "occupied"
                   ? "border-red-600 bg-red-100 text-red-800"
+                  : mesa.status === "reserved"
+                  ? "border-yellow-600 bg-yellow-100 text-yellow-800"
+                  : mesa.status === "cleaning"
+                  ? "border-blue-600 bg-blue-100 text-blue-800"
                   : "border-green-600 bg-green-100 text-green-900"
               }
             `}
@@ -247,76 +433,186 @@ export default function EditorMesas() {
       {/* Errores */}
       {error && <p className="text-red-600 text-sm font-bold mt-2 animate-pulse">{error}</p>}
 
-      {/* Formulario agregar mesa */}
-      <div className="mt-8 grid md:grid-cols-4 gap-6 items-end">
-        <div className="space-y-2">
-          <label
-            htmlFor="numeroMesa"
-            className="block text-[#264653] font-bold text-lg"
-          >
-            Número de mesa
-          </label>
-          <input
-            id="numeroMesa"
-            type="text"
-            placeholder="Ej: 12"
-            value={nuevoNumero}
-            onChange={(e) => setNuevoNumero(e.target.value)}
-            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold shadow"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="capacidadMesa"
-            className="block text-[#264653] font-bold text-lg"
-          >
-            Capacidad
-          </label>
-          <select
-            id="capacidadMesa"
-            value={nuevoCapacidad}
-            onChange={(e) => setNuevoCapacidad(Number(e.target.value))}
-            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none font-semibold shadow"
-          >
-            {[2, 4, 6, 8].map((n) => (
-              <option key={n} value={n}>
-                {n} personas
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="estadoMesa"
-            className="block text-[#264653] font-bold text-lg"
-          >
-            Estado
-          </label>
-          <select
-            id="estadoMesa"
-            value={nuevoEstado}
-            onChange={(e) => setNuevoEstado(e.target.value)}
-            className="w-full px-5 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none font-semibold shadow"
-          >
-            <option value="available">Disponible</option>
-            <option value="occupied">Ocupada</option>
-          </select>
-        </div>
-
+      {/* Botón para agregar mesa */}
+      <div className="flex justify-center mt-6">
         <button
-          onClick={agregarMesa}
-          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-8 py-3 rounded-full font-bold hover:bg-[#2f9b90] transition justify-center shadow"
+          onClick={abrirModalAgregar}
+          className="flex items-center gap-3 bg-[#3BAEA0] text-white px-8 py-4 rounded-full font-bold hover:bg-[#2f9b90] transition shadow-lg text-lg"
         >
-          <PlusCircle className="w-5 h-5" />
-          Añadir mesa
+          <PlusCircle className="w-6 h-6" />
+          Agregar Nueva Mesa
         </button>
       </div>
 
       <p className="text-base text-[#264653] mt-8 italic text-center">
-        🛠️ Doble click en una mesa para cambiar su estado entre disponible y ocupada. Arrastra para mover mesas.
+        🛠️ Doble click en una mesa para editarla. Arrastra para mover mesas.
       </p>
+
+      {/* Modal para agregar nueva mesa */}
+      <AnimatePresence>
+        {mostrarModalAgregar && (
+          <motion.div
+            className="fixed inset-0 z-50 flex justify-center items-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(0,0,0,0.4)" }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="bg-white border-2 border-[#3BAEA0] rounded-3xl shadow-2xl p-8 w-96 max-w-[90vw]"
+            >
+              <h2 className="text-2xl font-bold text-[#264653] mb-6 text-center flex items-center justify-center gap-2">
+                <PlusCircle className="w-6 h-6 text-[#3BAEA0]" />
+                Agregar Nueva Mesa
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[#264653] font-bold text-lg mb-2">
+                    Número de mesa
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Ej: 12 (solo el número)"
+                    value={nuevoNumero}
+                    onChange={(e) => setNuevoNumero(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#264653] font-bold text-lg mb-2">
+                    Capacidad
+                  </label>
+                  <select
+                    value={nuevoCapacidad}
+                    onChange={(e) => setNuevoCapacidad(Number(e.target.value))}
+                    className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  >
+                    {[2, 4, 6, 8].map((n) => (
+                      <option key={n} value={n}>
+                        {n} personas
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#264653] font-bold text-lg mb-2">
+                    Estado inicial
+                  </label>
+                  <select
+                    value={nuevoEstado}
+                    onChange={(e) => setNuevoEstado(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  >
+                    <option value="free">Disponible</option>
+                    <option value="occupied">Ocupada</option>
+                    <option value="reserved">Reservada</option>
+                    <option value="cleaning">Limpieza</option>
+                  </select>
+                </div>
+
+                {error && <p className="text-red-600 text-sm font-bold animate-pulse">{error}</p>}
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={cerrarModalAgregar}
+                  className="flex-1 py-3 rounded-full bg-gray-200 hover:bg-gray-300 text-[#264653] font-bold shadow transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={agregarMesa}
+                  className="flex-1 py-3 rounded-full bg-[#3BAEA0] hover:bg-[#2f9b90] text-white font-bold shadow transition flex items-center justify-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Crear Mesa
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de edición de mesa */}
+      <AnimatePresence>
+        {mesaEditando && (
+          <motion.div
+            className="fixed inset-0 z-50 flex justify-center items-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(0,0,0,0.4)" }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="bg-white border-2 border-[#3BAEA0] rounded-3xl shadow-2xl p-8 w-96"
+            >
+              <h2 className="text-2xl font-bold text-[#264653] mb-6 text-center">
+                Editar Mesa {mesaEditando.name}
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[#264653] font-bold text-lg mb-2">
+                    Capacidad
+                  </label>
+                  <select
+                    value={editCapacidad}
+                    onChange={(e) => setEditCapacidad(Number(e.target.value))}
+                    className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  >
+                    {[2, 4, 6, 8].map((n) => (
+                      <option key={n} value={n}>
+                        {n} personas
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#264653] font-bold text-lg mb-2">
+                    Estado
+                  </label>
+                  <select
+                    value={editEstado}
+                    onChange={(e) => setEditEstado(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-[#EADBC8] rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
+                  >
+                    <option value="free">Disponible</option>
+                    <option value="occupied">Ocupada</option>
+                    <option value="reserved">Reservada</option>
+                    <option value="cleaning">Limpieza</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={cerrarEdicionMesa}
+                  className="flex-1 py-3 rounded-full bg-gray-200 hover:bg-gray-300 text-[#264653] font-bold shadow transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarEdicionMesa}
+                  className="flex-1 py-3 rounded-full bg-[#3BAEA0] hover:bg-[#2f9b90] text-white font-bold shadow transition"
+                >
+                  Guardar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal gourmet eliminar mesa */}
       <AnimatePresence>

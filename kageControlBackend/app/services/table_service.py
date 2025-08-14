@@ -11,5 +11,14 @@ def create_table(db: Session, name: str, capacity: int):
 def update_status(db: Session, table_id: int, status: TableStatus):
     return table_repo.update_table_status(db, table_id, status)
 
+def update_table(db: Session, table_id: int, capacity: int = None, status: TableStatus = None):
+    return table_repo.update_table(db, table_id, capacity, status)
+
 def get_table_by_id(db: Session, table_id: int):
     return table_repo.get_table_by_id(db, table_id)
+
+def get_table_by_name(db: Session, name: str):
+    return table_repo.get_table_by_name(db, name)
+
+def delete_table(db: Session, table_id: int):
+    return table_repo.delete_table(db, table_id)

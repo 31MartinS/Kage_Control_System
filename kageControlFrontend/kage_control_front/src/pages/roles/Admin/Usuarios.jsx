@@ -106,6 +106,19 @@ export default function Usuarios() {
     setShowModal(true);
   };
 
+  const limpiarFormulario = () => {
+    setFormUsuario({
+      username: "",
+      full_name: "",
+      email: "",
+      phone: "",
+      role: "mesero",
+      hire_date: new Date().toISOString().split("T")[0],
+      password: "",
+      estado: "activo",
+    });
+  };
+
   const abrirModalEditar = (usuario) => {
     setEditando(true);
     setUsuarioEditandoId(usuario.id);
@@ -173,25 +186,48 @@ export default function Usuarios() {
 
   const handleCrearUsuario = () => {
     marcarTodosTouched();
+    
+    console.log("Form data:", formUsuario);
+    console.log("Errores:", errores);
+    
     if (Object.values(errores).some((e) => e) ||
       !formUsuario.username ||
       !formUsuario.full_name ||
       !formUsuario.email ||
-      !formUsuario.password) return;
+      !formUsuario.password) {
+        console.log("Validación falló");
+        butterup.toast({
+          title: "Error de validación",
+          message: "Por favor completa todos los campos requeridos.",
+          type: "error",
+          dismissable: true
+        });
+        return;
+    }
+    
     axiosClient
       .post("/auth/register", formUsuario)
       .then((res) => {
+        console.log("Usuario creado:", res.data);
         butterup.toast({
           title: "Usuario creado",
           message: `El usuario ${res.data.full_name} fue creado exitosamente.`,
           type: "success",
+          dismissable: true
         });
         setShowModal(false);
         fetchUsuarios();
+        limpiarFormulario();
       })
       .catch((err) => {
+        console.error("Error al crear usuario:", err);
         const errorMsg = err.response?.data?.detail || "Error al crear el usuario";
-        butterup.toast({ title: "Error", message: errorMsg, type: "error" });
+        butterup.toast({ 
+          title: "Error", 
+          message: errorMsg, 
+          type: "error",
+          dismissable: true 
+        });
       });
   };
 
@@ -229,264 +265,311 @@ export default function Usuarios() {
     (!editando && !formUsuario.password);
 
   return (
-    <div className="bg-[#FFF8F0] p-8 sm:p-12 rounded-3xl shadow-2xl border-2 border-[#EADBC8] max-w-5xl mx-auto space-y-10 font-sans min-h-[70vh] relative">
-      <h1 className="text-4xl font-extrabold text-center text-[#3BAEA0] tracking-tight">
-        Gestión de Usuarios
-      </h1>
-
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <p className="text-[#264653] font-semibold font-sans">
-          Usuarios registrados: {usuarios.length}
-        </p>
-        <button
-          onClick={abrirModalCrear}
-          className="flex items-center gap-2 bg-[#3BAEA0] text-white px-5 py-2 rounded-full font-bold hover:bg-[#329b91] shadow transition-all"
-        >
-          <PlusCircle className="w-5 h-5" />
-          Añadir usuario
-        </button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-base font-sans">
-          <thead className="text-xs uppercase bg-[#EADBC8] text-[#264653]">
-            <tr>
-              <th className="px-6 py-4 rounded-tl-2xl">Nombre</th>
-              <th className="px-6 py-4">Rol</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right rounded-tr-2xl">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuarios.map((u) => (
-              <tr
-                key={u.id}
-                className="bg-white border-b-2 border-[#EADBC8] hover:bg-[#f6f1ea] transition"
-              >
-                <td className="px-6 py-4 font-semibold">{u.full_name}</td>
-                <td className="px-6 py-4 capitalize">{u.role}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-3 py-1 text-xs rounded-full font-bold shadow
-                      ${u.estado === "inactivo"
-                        ? "bg-red-200 text-red-800"
-                        : "bg-green-200 text-green-800"}
-                    `}
-                  >
-                    {u.estado === "inactivo" ? "Inactivo" : "Activo"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button
-                    className="text-[#264653] hover:text-[#1b3540] transition"
-                    onClick={() => abrirModalEditar(u)}
-                  >
-                    <Pencil className="w-5 h-5" />
-                  </button>
-                  <button
-                    className="text-[#8D2E38] hover:text-[#731c2a] transition"
-                    onClick={() => abrirModalEliminar(u.id)}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal gourmet crear/editar */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ background: "rgba(0,0,0,0)" }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white w-full max-w-xl p-10 rounded-3xl shadow-2xl border-2 border-[#3BAEA0]"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                Gestión de Usuarios
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Administra el equipo de trabajo de tu restaurante
+              </p>
+            </div>
+            <button
+              onClick={abrirModalCrear}
+              className="mt-4 md:mt-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2 shadow-lg"
             >
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 text-[#8D2E38] hover:text-[#5c131e] text-2xl font-bold transition"
+              <PlusCircle className="w-5 h-5" />
+              Agregar Usuario
+            </button>
+          </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
+                  <p className="text-3xl font-bold text-gray-900">{usuarios.length}</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <PlusCircle className="w-8 h-8 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Usuarios Activos</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {usuarios.filter(u => u.estado === 'activo').length}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <PlusCircle className="w-8 h-8 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Meseros</p>
+                  <p className="text-3xl font-bold text-orange-600">
+                    {usuarios.filter(u => u.role === 'mesero').length}
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-xl">
+                  <PlusCircle className="w-8 h-8 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Administradores</p>
+                  <p className="text-3xl font-bold text-purple-600">
+                    {usuarios.filter(u => u.role === 'admin').length}
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-xl">
+                  <PlusCircle className="w-8 h-8 text-purple-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Users Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">Lista de Usuarios</h2>
+            <p className="text-gray-600 text-sm">Gestiona los miembros de tu equipo</p>
+          </div>
+
+          <div className="p-6">
+            {usuarios.length === 0 ? (
+              <div className="text-center py-12">
+                <PlusCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-xl font-semibold text-gray-600 mb-2">No hay usuarios</p>
+                <p className="text-gray-500">Comienza agregando tu primer usuario</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {usuarios.map((usuario) => (
+                    <motion.div
+                      key={usuario.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-3 h-3 rounded-full ${
+                            usuario.estado === 'activo' ? 'bg-green-500' : 'bg-red-500'
+                          }`}></div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{usuario.full_name}</h3>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                usuario.role === 'admin' 
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : usuario.role === 'mesero'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {usuario.role}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                usuario.estado === 'activo' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {usuario.estado}
+                              </span>
+                              {usuario.email && (
+                                <span className="text-xs text-gray-500">{usuario.email}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => abrirModalEditar(usuario)}
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => abrirModalEliminar(usuario.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Modals */}
+        <AnimatePresence>
+          {showModal && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
               >
-                <X className="w-7 h-7" />
-              </button>
-              <h2 className="text-2xl font-bold text-[#3BAEA0] mb-8 border-b pb-2 text-center">
-                {editando ? "Editar Usuario" : "Registrar Nuevo Usuario"}
-              </h2>
-              <div className="grid grid-cols-2 gap-5 font-sans">
-                <div>
-                  <input
-                    type="text"
-                    name="username"
-                    placeholder="Usuario"
-                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                    value={formUsuario.username}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    disabled={editando}
-                  />
-                  {errores.username && touched.username && (
-                    <p className="text-[#E76F51] text-xs mt-1">{errores.username}</p>
-                  )}
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    name="full_name"
-                    placeholder="Nombre completo"
-                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                    value={formUsuario.full_name}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {errores.full_name && touched.full_name && (
-                    <p className="text-[#E76F51] text-xs mt-1">{errores.full_name}</p>
-                  )}
-                </div>
-                <div>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Correo electrónico"
-                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                    value={formUsuario.email}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {errores.email && touched.email && (
-                    <p className="text-[#E76F51] text-xs mt-1">{errores.email}</p>
-                  )}
-                </div>
-                <div>
-                  <input
-                    type="tel"
-                    name="phone"
-                    placeholder="Teléfono"
-                    className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                    value={formUsuario.phone}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {errores.phone && touched.phone && (
-                    <p className="text-[#E76F51] text-xs mt-1">{errores.phone}</p>
-                  )}
-                </div>
-                <select
-                  name="role"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.role}
-                  onChange={handleChange}
-                >
-                  <option value="mesero">Mesero</option>
-                  <option value="cocina">Cocina</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <div>
-                <input
-                  type="date"
-                  name="hire_date"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.hire_date}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                />
-                {errores.hire_date && touched.hire_date && (
-                  <p className="text-[#E76F51] text-xs mt-1">{errores.hire_date}</p>
-                )}
-                </div>
-                {!editando && (
-                  <div className="col-span-2">
-                    <input
-                      type="password"
-                      name="password"
-                      placeholder="Contraseña"
-                      className="input w-full bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                      value={formUsuario.password}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {errores.password && touched.password && (
-                      <p className="text-[#E76F51] text-xs mt-1">{errores.password}</p>
-                    )}
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {editando ? "Editar Usuario" : "Nuevo Usuario"}
+                    </h2>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-gray-500" />
+                    </button>
                   </div>
-                )}
-                <select
-                  name="estado"
-                  className="input bg-[#FFF8F0] border-2 border-[#EADBC8] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-semibold"
-                  value={formUsuario.estado}
-                  onChange={handleChange}
-                >
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                </select>
-                <button
-                  onClick={editando ? handleActualizarUsuario : handleCrearUsuario}
-                  type="button"
-                  disabled={formularioInvalido}
-                  className={`col-span-2 py-3 rounded-full font-bold shadow mt-2 transition ${
-                    formularioInvalido
-                      ? "bg-gray-400 cursor-not-allowed text-white"
-                      : "bg-[#3BAEA0] hover:bg-[#329b91] text-white"
-                  }`}
-                >
-                  {editando ? "Guardar Cambios" : "Crear Usuario"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Modal gourmet para eliminar usuario */}
-      <AnimatePresence>
-        {modalEliminarOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ background: "rgba(0,0,0,0)" }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white w-full max-w-sm p-8 rounded-3xl shadow-2xl border-2 border-[#8D2E38]"
-            >
-              <button
-                onClick={() => setModalEliminarOpen(false)}
-                className="absolute top-3 right-4 text-[#8D2E38] hover:text-[#5c131e] text-2xl font-bold transition"
-              >
-                <X className="w-7 h-7" />
-              </button>
-              <h2 className="text-2xl font-bold text-[#8D2E38] mb-6 text-center">¿Eliminar usuario?</h2>
-              <p className="text-[#264653] text-center mb-6">Esta acción no se puede deshacer.</p>
-              <div className="flex gap-4 w-full">
-                <button
-                  onClick={confirmarEliminarUsuario}
-                  className="flex-1 py-2 rounded-full bg-[#8D2E38] hover:bg-[#731c2a] text-white font-bold shadow transition"
-                >
-                  Eliminar
-                </button>
-                <button
-                  onClick={() => setModalEliminarOpen(false)}
-                  className="flex-1 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-[#264653] font-bold shadow transition"
-                >
-                  Cancelar
-                </button>
-              </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Usuario
+                      </label>
+                      <input
+                        type="text"
+                        value={formUsuario.username}
+                        onChange={(e) => setFormUsuario({ ...formUsuario, username: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Nombre de usuario"
+                        autoComplete="username"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre Completo
+                      </label>
+                      <input
+                        type="text"
+                        value={formUsuario.full_name}
+                        onChange={(e) => setFormUsuario({ ...formUsuario, full_name: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Ingresa el nombre completo"
+                        autoComplete="name"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={formUsuario.email}
+                        onChange={(e) => setFormUsuario({ ...formUsuario, email: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="usuario@email.com"
+                        autoComplete="email"
+                        required
+                      />
+                    </div>
+
+                    {!editando && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Contraseña
+                        </label>
+                        <input
+                          type="password"
+                          value={formUsuario.password}
+                          onChange={(e) => setFormUsuario({ ...formUsuario, password: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          placeholder="Contraseña segura"
+                          autoComplete="new-password"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rol
+                      </label>
+                      <select
+                        value={formUsuario.role}
+                        onChange={(e) => setFormUsuario({ ...formUsuario, role: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        required
+                      >
+                        <option value="">Selecciona un rol</option>
+                        <option value="admin">Administrador</option>
+                        <option value="mesero">Mesero</option>
+                        <option value="cocina">Cocina</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Estado
+                      </label>
+                      <select
+                        value={formUsuario.estado}
+                        onChange={(e) => setFormUsuario({ ...formUsuario, estado: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        required
+                      >
+                        <option value="activo">Activo</option>
+                        <option value="inactivo">Inactivo</option>
+                      </select>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={editando ? handleActualizarUsuario : handleCrearUsuario}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all font-medium"
+                      >
+                        {editando ? "Actualizar" : "Crear Usuario"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+
+      </div>
     </div>
   );
 }

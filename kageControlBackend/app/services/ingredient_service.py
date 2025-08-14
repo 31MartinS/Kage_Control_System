@@ -15,6 +15,17 @@ def create_or_update_ingredient(db: Session, ingredient: IngredientCreate):
 
     return ingredient_repo.create_ingredient(db, ingredient)
 
+def update_ingredient(db: Session, ingredient_id: int, ingredient: IngredientCreate):
+    existing = ingredient_repo.get_ingredient_by_id(db, ingredient_id)
+    if not existing:
+        return None
+    
+    existing.name = ingredient.name
+    existing.stock = ingredient.stock
+    db.commit()
+    db.refresh(existing)
+    return existing
+
 def list_ingredients(db: Session):
     return ingredient_repo.get_all_ingredients(db)
 

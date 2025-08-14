@@ -10,10 +10,10 @@ import PlanoMesas from "./pages/roles/Mesero/PlanoMesas";
 import SeguimientoPedidos from "./pages/roles/Mesero/SeguimientoPedidos";
 
 // Admin
-import Reportes from "./pages/roles/Admin/Reportes";
+import Reportes from "./pages/roles/Admin/ReportesNew";
 import Usuarios from "./pages/roles/Admin/Usuarios";
 import Inventario from "./pages/roles/Admin/Inventario";
-import Informes from "./pages/roles/Admin/Informes";
+import Informes from "./pages/roles/Admin/InformesImproved";
 import EditorMesas from "./pages/roles/Admin/EditorMesas";
 
 // Cocina

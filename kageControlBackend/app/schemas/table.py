@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from typing import Optional
 from app.models.table import TableStatus
 
 class TableBase(BaseModel):
@@ -8,7 +9,8 @@ class TableBase(BaseModel):
 class TableCreate(TableBase): pass
 
 class TableUpdate(BaseModel):
-    status: TableStatus
+    capacity: Optional[int] = None
+    status: Optional[TableStatus] = None
 
     model_config = ConfigDict(from_attributes=True)
 

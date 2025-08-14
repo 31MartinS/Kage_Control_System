@@ -11,6 +11,10 @@ router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 def create_or_update_ingredient(ingredient: IngredientCreate, db: Session = Depends(get_db)):
     return ingredient_service.create_or_update_ingredient(db, ingredient)
 
+@router.put("/{ingredient_id}", response_model=Ingredient)
+def update_ingredient(ingredient_id: int, ingredient: IngredientCreate, db: Session = Depends(get_db)):
+    return ingredient_service.update_ingredient(db, ingredient_id, ingredient)
+
 @router.get("/", response_model=List[Ingredient])
 def list_ingredients(db: Session = Depends(get_db)):
     return ingredient_service.list_ingredients(db)

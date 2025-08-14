@@ -14,3 +14,9 @@ class Ingredient(IngredientBase):
 class DishIngredientCreate(BaseModel):
     ingredient_id: int
     quantity_needed: float
+
+class DishIngredientResponse(BaseModel):
+    ingredient_id: int
+    quantity_needed: float
+
+    model_config = ConfigDict(from_attributes=True)

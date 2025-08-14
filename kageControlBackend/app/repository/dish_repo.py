@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.dish import Dish
 from app.models.ingredient import DishIngredient
 from app.schemas.dish import DishCreate
@@ -23,8 +23,11 @@ def create_dish(db: Session, dish_data: DishCreate):
     db.commit()
     return dish
 
+def get_all_dishes(db: Session):
+    return db.query(Dish).options(joinedload(Dish.ingredients)).all()
+
 def get_available_dishes(db: Session):
-    dishes = db.query(Dish).all()
+    dishes = db.query(Dish).options(joinedload(Dish.ingredients)).all()
     available = []
     for dish in dishes:
         enough = all(di.ingredient.stock >= di.quantity_needed for di in dish.ingredients)

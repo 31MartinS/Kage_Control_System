@@ -12,6 +12,9 @@ def create_ingredient(db: Session, ingredient: IngredientCreate):
 def get_all_ingredients(db: Session):
     return db.query(Ingredient).all()
 
+def get_ingredient_by_id(db: Session, ingredient_id: int):
+    return db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+
 def delete_ingredient(db: Session, ingredient_id: int):
     ing = db.query(Ingredient).get(ingredient_id)
     if not ing:

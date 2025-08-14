@@ -1,305 +1,634 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../../api/axiosClient";
 import butterup from "butteruptoasts";
+import swal from "sweetalert";
 import "../../../styles/butterup-2.0.0/butterup-2.0.0/butterup.css";
+import { 
+  UserPlus, Users, Phone, MapPin, Utensils, CheckCircle, AlertCircle, 
+  Clock, RefreshCw, Check, X, Calendar, MessageSquare 
+} from "lucide-react";
 
 const colors = {
-  fondo: "bg-[#FFF8F0]",
-  borde: "border-[#EADBC8]",
-  principal: "bg-[#264653]",
-  secundario: "bg-[#3BAEA0]",
-  acento: "bg-[#F4A261]",
-  error: "text-[#E76F51]",
-  texto: "text-[#264653]",
-  boton: "bg-[#264653] hover:bg-[#1b3540]",
-  boton2: "bg-[#3BAEA0] hover:bg-[#329b91]",
+  primary: '#3BAEA0',
+  secondary: '#E76F51', 
+  accent: '#F4A261',
+  dark: '#264653',
+  light: '#F8FAFC',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  gray: '#6B7280'
 };
 
-// --- VALIDACIONES ---
-function validarNombre(nombre) {
-  return /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,40}$/.test(nombre.trim());
-}
-
-function validarComensales(n) {
-  const num = Number(n);
-  return Number.isInteger(num) && num >= 1 && num <= 20;
-}
-
-function validarContacto(valor) {
-  if (!valor) return true;
-  const telefono = /^[0-9+() -]{7,20}$/;
-  const email = /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/;
-  return telefono.test(valor) || email.test(valor);
-}
-
-function validarUbicacion(txt) {
-  return !txt || (txt.length <= 40);
-}
+// Funciones de validación mejoradas
+const validateContact = (contact) => {
+  if (!contact || !contact.trim()) return { isValid: true, message: "" };
+  
+  const value = contact.trim();
+  
+  // Validación de email más robusta
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  
+  // Validación de teléfono: permite +, espacios, paréntesis, guiones
+  const phoneRegex = /^[\+]?[(]?[\d\s\-\(\)]{7,20}$/;
+  
+  // Limpiar teléfono para contar solo dígitos
+  const cleanPhone = value.replace(/[\s\-\(\)\+]/g, '');
+  
+  // Verificar si es email válido
+  if (emailRegex.test(value)) {
+    return { isValid: true, message: "" };
+  }
+  
+  // Verificar si es teléfono válido
+  if (phoneRegex.test(value) && /^\d{7,15}$/.test(cleanPhone)) {
+    return { isValid: true, message: "" };
+  }
+  
+  // Si no es válido ninguno
+  if (value.includes('@')) {
+    return { isValid: false, message: "El email no tiene un formato válido" };
+  } else {
+    return { isValid: false, message: "El teléfono debe tener entre 7-15 dígitos" };
+  }
+};
 
 export default function RegistrarLlegada() {
   const [availableTables, setAvailableTables] = useState([]);
   const [form, setForm] = useState({
-    nombre: "",
-    comensales: 1,
+    customer_name: "",
+    party_size: 1,
     table_id: "",
-    contacto: "",
-    ubicacion: "",
+    contact: "",
+    preferences: "",
   });
 
-  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [errores, setErrores] = useState({});
-  const [touched, setTouched] = useState({
-    nombre: false,
-    comensales: false,
-    contacto: false,
-    ubicacion: false,
-  });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    async function fetchTables() {
-      try {
-        const res = await axiosClient.get("/tables");
-        const libres = res.data.filter(
-          (mesa) => mesa.status === "free" || mesa.status === "libre"
-        );
-        setAvailableTables(libres.map((m) => m.id));
-      } catch (error) {
-        butterup.toast({
-          title: "Error al cargar mesas",
-          message: "No se pudieron obtener las mesas disponibles",
-          location: "top-right",
-          type: "error",
-        });
+    fetchAvailableTables();
+  }, []);
+
+  const fetchAvailableTables = async () => {
+    try {
+      const response = await axiosClient.get("/tables");
+      const freeTables = response.data.filter(
+        (table) => table.status === "free" || table.status === "libre"
+      );
+      setAvailableTables(freeTables);
+    } catch (error) {
+      console.error("Error al cargar mesas:", error);
+      showNotification("error", "Error", "No se pudieron cargar las mesas disponibles");
+    }
+  };
+
+  const showNotification = (type, title, message) => {
+    butterup.toast({
+      title,
+      message,
+      location: "top-right",
+      type,
+      icon: false,
+      dismissable: true
+    });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type } = e.target;
+    const processedValue = type === "number" ? parseInt(value) || 1 : value;
+    
+    setForm(prev => ({
+      ...prev,
+      [name]: processedValue
+    }));
+
+    // Limpiar error del campo cuando el usuario empiece a escribir
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ""
+      }));
+    }
+
+    // Validación en tiempo real para contacto
+    if (name === 'contact' && value.trim()) {
+      const contactValidation = validateContact(value);
+      if (!contactValidation.isValid) {
+        setErrors(prev => ({
+          ...prev,
+          contact: contactValidation.message
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          contact: ""
+        }));
+      }
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+  };
+
+  // Validaciones frontend antes de enviar
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validar nombre del cliente
+    if (!form.customer_name.trim()) {
+      newErrors.customer_name = "El nombre del cliente es requerido";
+    } else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/.test(form.customer_name.trim())) {
+      newErrors.customer_name = "El nombre solo puede contener letras y espacios";
+    } else if (form.customer_name.trim().length < 3) {
+      newErrors.customer_name = "El nombre debe tener al menos 3 caracteres";
+    } else if (form.customer_name.trim().length > 40) {
+      newErrors.customer_name = "El nombre no puede tener más de 40 caracteres";
+    }
+    
+    // Validar número de comensales
+    if (!form.party_size || form.party_size < 1) {
+      newErrors.party_size = "Debe haber al menos 1 comensal";
+    } else if (form.party_size > 20) {
+      newErrors.party_size = "No se pueden registrar más de 20 comensales";
+    }
+
+    // Validar contacto si se proporciona
+    if (form.contact && form.contact.trim()) {
+      const contactValidation = validateContact(form.contact);
+      if (!contactValidation.isValid) {
+        newErrors.contact = contactValidation.message;
       }
     }
 
-    fetchTables();
-  }, []);
+    // Validar preferencias si se proporcionan
+    if (form.preferences && form.preferences.trim() && form.preferences.trim().length > 100) {
+      newErrors.preferences = "Las preferencias no pueden tener más de 100 caracteres";
+    }
 
-  // VALIDACIONES DE ENTRADA
-  useEffect(() => {
-    setErrores({
-      nombre: !validarNombre(form.nombre) ? "Solo letras, min. 3 caracteres" : "",
-      comensales: !validarComensales(form.comensales) ? "Entre 1 y 20" : "",
-      contacto: !validarContacto(form.contacto) ? "Teléfono o email válido" : "",
-      ubicacion: !validarUbicacion(form.ubicacion) ? "Máx. 40 caracteres" : "",
-    });
-  }, [form]);
-
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setForm((f) => ({
-      ...f,
-      [name]: type === "number" ? +value : value,
-    }));
+    return newErrors;
   };
 
-  // Ahora con onBlur:
-  const handleBlur = (e) => {
-    const { name } = e.target;
-    setTouched((prev) => ({
-      ...prev,
-      [name]: true,
-    }));
-  };
-
-  const showToast = (type, title, message) => {
-    butterup.toast({ title, message, location: "top-right", icon: false, dismissable: true, type });
-  };
-
-  const parseError = (err) => {
-    const detail = err.response?.data?.detail;
-    if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
-    return detail || "Error al registrar llegada";
-  };
-
-  // Al enviar, marca todos los campos como "touched"
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Marcar todos los campos como tocados
     setTouched({
-      nombre: true,
-      comensales: true,
-      contacto: true,
-      ubicacion: true,
+      customer_name: true,
+      party_size: true,
+      contact: true,
+      preferences: true
     });
-    setShowModal(true);
+
+    // Validar formulario
+    const validationErrors = validateForm();
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      
+      // Mostrar errores con butterup
+      const errorMessages = Object.values(validationErrors);
+      errorMessages.forEach(error => {
+        butterup.toast({
+          title: "Error de validación",
+          message: error,
+          location: "top-right",
+          type: "error",
+          icon: false,
+          dismissable: true
+        });
+      });
+      
+      return;
+    }
+
+    // Si pasa las validaciones, mostrar modal de confirmación con SweetAlert
+    showConfirmationModal();
+  };
+
+  const showConfirmationModal = () => {
+    const selectedTable = availableTables.find(t => t.id == form.table_id);
+    const tableText = form.table_id 
+      ? `Mesa ${selectedTable?.number || form.table_id} (Capacidad: ${selectedTable?.capacity})`
+      : "Asignación automática";
+
+    const contactText = form.contact ? `\nContacto: ${form.contact}` : "";
+    const preferencesText = form.preferences ? `\nPreferencias: ${form.preferences}` : "";
+
+    // Verificar si la mesa seleccionada es adecuada para el número de comensales
+    let warningText = "";
+    if (selectedTable && selectedTable.capacity < form.party_size) {
+      warningText = `\n⚠️ ADVERTENCIA: La mesa seleccionada tiene capacidad para ${selectedTable.capacity} personas, pero hay ${form.party_size} comensales. ¿Desea continuar de todos modos?`;
+    } else if (selectedTable && selectedTable.capacity > form.party_size + 2) {
+      warningText = `\n💡 NOTA: La mesa seleccionada es bastante amplia (${selectedTable.capacity} personas) para ${form.party_size} comensales.`;
+    }
+
+    swal({
+      title: "Confirmar Registro de Llegada",
+      text: `Cliente: ${form.customer_name}\nComensales: ${form.party_size}\nMesa: ${tableText}${contactText}${preferencesText}${warningText}`,
+      icon: selectedTable && selectedTable.capacity < form.party_size ? "warning" : "info",
+      buttons: {
+        cancel: {
+          text: "Cancelar",
+          value: false,
+          visible: true,
+          className: "btn-cancel",
+          closeModal: true,
+        },
+        confirm: {
+          text: selectedTable && selectedTable.capacity < form.party_size ? "Continuar de todos modos" : "Confirmar Registro",
+          value: true,
+          visible: true,
+          className: "btn-confirm",
+          closeModal: true,
+        }
+      },
+      dangerMode: selectedTable && selectedTable.capacity < form.party_size,
+    })
+    .then((willConfirm) => {
+      if (willConfirm) {
+        confirmSubmit();
+      }
+    });
   };
 
   const confirmSubmit = async () => {
-    setShowModal(false);
-    setSuccessMsg("");
     setLoading(true);
+    setErrors({});
+    setSuccessMessage("");
 
     try {
       const payload = {
-        customer_name: form.nombre,
-        party_size: form.comensales,
-        contact: form.contacto || undefined,
-        preferences: form.ubicacion || undefined,
-        ...(form.table_id && { table_id: +form.table_id }),
+        customer_name: form.customer_name.trim(),
+        party_size: form.party_size,
+        contact: form.contact.trim() || undefined,
+        preferences: form.preferences.trim() || undefined,
+        ...(form.table_id && { table_id: parseInt(form.table_id) }),
       };
 
-      const res = await axiosClient.post("/arrivals", payload);
-
-      const mesaId = res.data.table_id;
-      const at = new Date(res.data.assigned_at).toLocaleTimeString();
-      const msg = `Mesa ${mesaId} asignada a ${form.comensales} comensal(es). Llegada registrada a las ${at}.`;
-
-      setSuccessMsg(msg);
-      showToast("success", "Llegada registrada", msg);
-
-      setAvailableTables((prev) => prev.filter((id) => id !== mesaId));
-
-      setForm({ nombre: "", comensales: 1, table_id: "", contacto: "", ubicacion: "" });
-      setTouched({
-        nombre: false,
-        comensales: false,
-        contacto: false,
-        ubicacion: false,
+      const response = await axiosClient.post("/arrivals", payload);
+      
+      const tableId = response.data.table_id;
+      const assignedTime = new Date(response.data.assigned_at).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
-    } catch (err) {
-      showToast("error", "Error al registrar llegada", parseError(err));
+      
+      const message = `Mesa ${tableId} asignada exitosamente a ${form.party_size} comensal${form.party_size > 1 ? 'es' : ''}. Llegada registrada a las ${assignedTime}.`;
+      
+      setSuccessMessage(message);
+      showNotification("success", "¡Registro exitoso!", message);
+
+      // Mostrar éxito con SweetAlert también
+      swal({
+        title: "¡Registro exitoso!",
+        text: message,
+        icon: "success",
+        button: "Entendido",
+        timer: 4000,
+      });
+
+      // Actualizar mesas disponibles
+      setAvailableTables(prev => prev.filter(table => table.id !== tableId));
+
+      // Resetear formulario
+      setForm({
+        customer_name: "",
+        party_size: 1,
+        table_id: "",
+        contact: "",
+        preferences: "",
+      });
+      setTouched({});
+      setErrors({});
+
+    } catch (error) {
+      console.error("Error al registrar llegada:", error);
+      console.log("Response data:", error.response?.data);
+      console.log("Response status:", error.response?.status);
+      
+      if (error.response?.status === 422 && error.response?.data?.detail) {
+        // Errores de validación del backend
+        const backendErrors = {};
+        const details = error.response.data.detail;
+        
+        console.log("Validation details:", details);
+        
+        if (Array.isArray(details)) {
+          details.forEach(err => {
+            console.log("Processing error:", err);
+            // Obtener el nombre del campo desde la estructura de Pydantic
+            let fieldName = err.field || (err.loc ? err.loc[err.loc.length - 1] : 'general');
+            const message = err.message || err.msg || "Campo inválido";
+            
+            backendErrors[fieldName] = message;
+          });
+        } else if (typeof details === 'object' && details.field && details.message) {
+          backendErrors[details.field] = details.message;
+        } else if (typeof details === 'string') {
+          showNotification("error", "Error de validación", details);
+          return;
+        }
+        
+        console.log("Backend errors mapped:", backendErrors);
+        setErrors(backendErrors);
+        
+        // Mostrar todos los errores en la notificación
+        const errorCount = Object.keys(backendErrors).length;
+        const firstError = Object.values(backendErrors)[0];
+        const notificationMessage = errorCount === 1 
+          ? firstError 
+          : `Se encontraron ${errorCount} errores de validación`;
+          
+        showNotification("error", "Errores de validación", notificationMessage);
+        
+      } else if (error.response?.status === 400 && error.response?.data?.detail) {
+        // Errores de negocio
+        const detail = error.response.data.detail;
+        if (typeof detail === 'object' && detail.field && detail.message) {
+          setErrors({ [detail.field]: detail.message });
+          showNotification("error", "Error", detail.message);
+        } else if (typeof detail === 'string') {
+          showNotification("error", "Error", detail);
+        } else {
+          showNotification("error", "Error", "Error en la solicitud");
+        }
+      } else {
+        // Error genérico
+        const errorMsg = error.response?.data?.detail || error.message || "Ocurrió un error inesperado al registrar la llegada";
+        showNotification("error", "Error", errorMsg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const formInvalido =
-    loading ||
-    Object.values(errores).some((e) => e) ||
-    !form.nombre ||
-    !form.comensales;
+  const isFormValid = form.customer_name.trim() && form.party_size >= 1;
 
   return (
-    <div className={`${colors.fondo} p-10 rounded-3xl shadow-2xl border ${colors.borde} max-w-3xl mx-auto`}>
-      <h1 className="text-4xl font-extrabold mb-8 text-center text-[#3BAEA0] tracking-tight font-sans">
-        Registrar llegada de comensales
-      </h1>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 font-sans">
-        <div className="space-y-4 md:col-span-1">
-          <label className="block text-[#264653] font-semibold">Nombre del cliente</label>
-          <input
-            name="nombre"
-            value={form.nombre}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
-            autoComplete="off"
-          />
-          {errores.nombre && touched.nombre && (
-            <p className="text-[#E76F51] text-xs mt-1">{errores.nombre}</p>
-          )}
-
-          <label className="block text-[#264653] font-semibold">Número de comensales</label>
-          <input
-            name="comensales"
-            type="number"
-            min="1"
-            max="20"
-            value={form.comensales}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
-          />
-          {errores.comensales && touched.comensales && (
-            <p className="text-[#E76F51] text-xs mt-1">{errores.comensales}</p>
-          )}
-
-          <label className="block text-[#264653] font-semibold">Mesa</label>
-          <select
-            name="table_id"
-            value={form.table_id}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
-          >
-            <option value="">-- Mesa automática --</option>
-            {availableTables.map((n) => (
-              <option key={n} value={n}>Mesa {n}</option>
-            ))}
-          </select>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
+            <UserPlus className="w-10 h-10" style={{ color: colors.primary }} />
+            Registrar Llegada
+          </h1>
+          <p className="text-lg text-gray-600">Registra la llegada de nuevos comensales y asigna mesa</p>
         </div>
 
-        <div className="space-y-4 md:col-span-1">
-          <label className="block text-[#264653] font-semibold">Contacto</label>
-          <input
-            name="contacto"
-            value={form.contacto}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
-          />
-          {errores.contacto && touched.contacto && (
-            <p className="text-[#E76F51] text-xs mt-1">{errores.contacto}</p>
-          )}
+        {/* Mensaje de éxito */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">Registro exitoso</span>
+            </div>
+            <p className="text-green-700 mt-1">{successMessage}</p>
+          </div>
+        )}
 
-          <label className="block text-[#264653] font-semibold">Preferencia de ubicación</label>
-          <input
-            name="ubicacion"
-            value={form.ubicacion}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="w-full px-4 py-3 border border-[#EADBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3BAEA0] font-sans"
-          />
-          {errores.ubicacion && touched.ubicacion && (
-            <p className="text-[#E76F51] text-xs mt-1">{errores.ubicacion}</p>
-          )}
+        {/* Formulario */}
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Nombre del cliente */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <UserPlus className="w-4 h-4 inline mr-1" />
+                  Nombre del cliente *
+                </label>
+                <input
+                  type="text"
+                  name="customer_name"
+                  value={form.customer_name}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Ingrese el nombre completo"
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    errors.customer_name && touched.customer_name
+                      ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                      : 'border-gray-200 focus:ring-blue-500 bg-white'
+                  }`}
+                  required
+                />
+                {errors.customer_name && touched.customer_name && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.customer_name}
+                  </p>
+                )}
+              </div>
 
-          <button
-            type="submit"
-            disabled={formInvalido}
-            className={`w-full py-3 mt-1 rounded-full font-semibold text-white text-lg tracking-wide transition font-sans shadow-lg ${
-              formInvalido
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#3BAEA0] hover:bg-[#2f9b90]"
-            }`}
-          >
-            {loading ? "Registrando..." : "Asignar mesa"}
-          </button>
+              {/* Número de comensales */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Users className="w-4 h-4 inline mr-1" />
+                  Número de comensales *
+                </label>
+                <input
+                  type="number"
+                  name="party_size"
+                  value={form.party_size}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  min="1"
+                  max="20"
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    errors.party_size && touched.party_size
+                      ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                      : 'border-gray-200 focus:ring-blue-500 bg-white'
+                  }`}
+                  required
+                />
+                {errors.party_size && touched.party_size && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.party_size}
+                  </p>
+                )}
+              </div>
 
-          {successMsg && (
-            <p className="mt-4 text-center text-[#3BAEA0] font-semibold whitespace-pre-wrap font-sans">
-              {successMsg}
-            </p>
-          )}
-        </div>
-      </form>
+              {/* Mesa */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Utensils className="w-4 h-4 inline mr-1" />
+                  Mesa (opcional)
+                </label>
+                <select
+                  name="table_id"
+                  value={form.table_id}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    errors.table_id
+                      ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                      : 'border-gray-200 focus:ring-blue-500 bg-white'
+                  }`}
+                >
+                  <option value="">Asignación automática</option>
+                  {availableTables.map((table) => (
+                    <option key={table.id} value={table.id}>
+                      Mesa {table.number || table.id} - Capacidad: {table.capacity}
+                      {table.capacity < form.party_size ? " ⚠️ Pequeña" : ""}
+                      {table.capacity >= form.party_size && table.capacity <= form.party_size + 1 ? " ✓ Ideal" : ""}
+                      {table.capacity > form.party_size + 2 ? " 💡 Amplia" : ""}
+                    </option>
+                  ))}
+                </select>
+                {errors.table_id && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.table_id}
+                  </p>
+                )}
+                {form.table_id && (() => {
+                  const selectedTable = availableTables.find(t => t.id == form.table_id);
+                  if (selectedTable && selectedTable.capacity < form.party_size) {
+                    return (
+                      <p className="text-orange-600 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        ⚠️ Esta mesa es pequeña para {form.party_size} comensales (capacidad: {selectedTable.capacity})
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+                <p className="text-gray-500 text-xs mt-1">
+                  Si no selecciona una mesa, se asignará automáticamente la más adecuada
+                </p>
+              </div>
 
-      {/* Modal de confirmación */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/0">
-          <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center font-sans border-2 border-[#3BAEA0]">
-            <h2 className="text-2xl font-bold mb-4 text-[#264653] font-sans">¿Confirmar llegada?</h2>
-            <ul className="mb-6 w-full text-left text-[#3BAEA0] text-base">
-              <li><b>Cliente:</b> {form.nombre}</li>
-              <li><b>Comensales:</b> {form.comensales}</li>
-              {form.table_id && <li><b>Mesa:</b> {form.table_id}</li>}
-              {form.contacto && <li><b>Contacto:</b> {form.contacto}</li>}
-              {form.ubicacion && <li><b>Ubicación:</b> {form.ubicacion}</li>}
-            </ul>
-            <div className="flex gap-4 w-full">
+              {/* Contacto */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Phone className="w-4 h-4 inline mr-1" />
+                  Contacto (opcional)
+                </label>
+                <input
+                  type="text"
+                  name="contact"
+                  value={form.contact}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Teléfono: 987654321 o Email: usuario@email.com"
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    errors.contact && touched.contact
+                      ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                      : 'border-gray-200 focus:ring-blue-500 bg-white'
+                  }`}
+                />
+                {errors.contact && touched.contact && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.contact}
+                  </p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">
+                  Ejemplos válidos: 987654321, (01) 234-5678, +51 987 654 321, usuario@email.com
+                </p>
+              </div>
+            </div>
+
+            {/* Preferencias */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <MessageSquare className="w-4 h-4 inline mr-1" />
+                Preferencias especiales (opcional)
+              </label>
+              <textarea
+                name="preferences"
+                value={form.preferences}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder="Ej: Mesa cerca de la ventana, alejada del ruido, etc."
+                rows="3"
+                className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors resize-none ${
+                  errors.preferences && touched.preferences
+                    ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                    : 'border-gray-200 focus:ring-blue-500 bg-white'
+                }`}
+              />
+              {errors.preferences && touched.preferences && (
+                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.preferences}
+                </p>
+              )}
+            </div>
+
+            {/* Botón de envío */}
+            <div className="flex justify-end">
               <button
-                onClick={confirmSubmit}
-                className="flex-1 py-2 rounded-full bg-[#3BAEA0] hover:bg-[#2f9b90] text-white font-semibold shadow transition"
-                disabled={loading}
+                type="submit"
+                disabled={!isFormValid || loading}
+                className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium transition-all ${
+                  !isFormValid || loading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'text-white hover:opacity-90 shadow-lg'
+                }`}
+                style={{ 
+                  backgroundColor: !isFormValid || loading ? undefined : colors.primary 
+                }}
               >
-                Confirmar
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-[#264653] font-semibold shadow transition"
-                disabled={loading}
-              >
-                Cancelar
+                {loading ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5" />
+                )}
+                {loading ? 'Registrando...' : 'Registrar Llegada'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+
+        {/* Estilos personalizados para SweetAlert */}
+        <style>{`
+          .swal-modal {
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+          }
+          .swal-title {
+            color: #264653 !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
+          }
+          .swal-text {
+            color: #6B7280 !important;
+            white-space: pre-line !important;
+            line-height: 1.6 !important;
+          }
+          .swal-button--confirm {
+            background-color: #3BAEA0 !important;
+            border-radius: 0.75rem !important;
+            font-weight: 600 !important;
+            padding: 12px 24px !important;
+            margin: 0 8px !important;
+          }
+          .swal-button--cancel {
+            background-color: #e5e7eb !important;
+            color: #6B7280 !important;
+            border-radius: 0.75rem !important;
+            font-weight: 600 !important;
+            padding: 12px 24px !important;
+            margin: 0 8px !important;
+          }
+          .swal-button:hover {
+            opacity: 0.9 !important;
+            transform: translateY(-1px) !important;
+          }
+          .swal-footer {
+            text-align: center !important;
+            padding-top: 20px !important;
+          }
+        `}</style>
+      </div>
     </div>
   );
 }
